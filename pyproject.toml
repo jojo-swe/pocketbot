@@ -1,13 +1,16 @@
 [project]
 name = "nanobot-ai"
-version = "0.1.3.post7"
-description = "A lightweight personal AI assistant framework"
+version = "0.1.3.post7+jojo"
+description = "A lightweight personal AI assistant framework (fork of HKUDS/nanobot)"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "nanobot contributors"}
+    {name = "jojo-swe", email = "74981366+jojo-swe@users.noreply.github.com"}
 ]
-keywords = ["ai", "agent", "chatbot"]
+maintainers = [
+    {name = "jojo-swe", email = "74981366+jojo-swe@users.noreply.github.com"}
+]
+keywords = ["ai", "agent", "chatbot", "assistant"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -15,6 +18,10 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+readme = "README.md"
+homepage = "https://github.com/jojo-swe/nanobot"
+repository = "https://github.com/jojo-swe/nanobot"
+documentation = "https://github.com/jojo-swe/nanobot#readme"
 
 dependencies = [
     "typer>=0.9.0",

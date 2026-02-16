@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/Feishu-Group-E9DBFC?style=flat&logo=feishu&logoColor=white" alt="Feishu"></a>
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/WeChat-Group-C5EAB4?style=flat&logo=wechat&logoColor=white" alt="WeChat"></a>
-    <a href="https://discord.gg/MnCvHqpUGB"><img src="https://img.shields.io/badge/Discord-Community-5865F2?style=flat&logo=discord&logoColor=white" alt="Discord"></a>
+    <a href="https://github.com/jojo-swe/nanobot/discussions"><img src="https://img.shields.io/badge/GitHub-Discussions-181717?style=flat&logo=github&logoColor=white" alt="GitHub Discussions"></a>
   </p>
 </div>
 
@@ -18,7 +18,7 @@
 
 ⚡️ Delivers core agent functionality in just **~4,000** lines of code — **99% smaller** than Clawdbot's 430k+ lines.
 
-📏 Real-time line count: **3,668 lines** (run `bash core_agent_lines.sh` to verify anytime)
+📏 Real-time line count: **3,880 lines** (run `bash core_agent_lines.sh` to verify anytime)
 
 ## 📢 News
 
@@ -85,7 +85,7 @@
 **Install from source** (latest features, recommended for development)
 
 ```bash
-git clone https://github.com/HKUDS/nanobot.git
+git clone https://github.com/jojo-swe/nanobot.git
 cd nanobot
 pip install -e .
 ```
