@@ -70,18 +70,6 @@ cd nanobot
 pip install -e .
 ```
 
-**Install with [uv](https://github.com/astral-sh/uv)** (stable, fast)
-
-```bash
-uv tool install pocketbot-ai
-```
-
-**Install from PyPI** (stable)
-
-```bash
-pip install pocketbot-ai
-```
-
 ## 🚀 Quick Start
 
 > [!TIP]
