@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nanobot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/highlight.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            nano: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+              950: '#082f49',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* Message content styling */
+    .msg-content p { margin-bottom: 0.5rem; }
+    .msg-content p:last-child { margin-bottom: 0; }
+    .msg-content pre {
+      background: #1e293b;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.5rem 0;
+      border: 1px solid #334155;
+    }
+    .msg-content code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+    }
+    .msg-content :not(pre) > code {
+      background: #1e293b;
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.25rem;
+      color: #e2e8f0;
+    }
+    .msg-content ul, .msg-content ol {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+    .msg-content ul { list-style-type: disc; }
+    .msg-content ol { list-style-type: decimal; }
+    .msg-content li { margin-bottom: 0.25rem; }
+    .msg-content a { color: #38bdf8; text-decoration: underline; }
+    .msg-content blockquote {
+      border-left: 3px solid #475569;
+      padding-left: 1rem;
+      color: #94a3b8;
+      margin: 0.5rem 0;
+    }
+    .msg-content h1, .msg-content h2, .msg-content h3 {
+      font-weight: 600;
+      margin: 0.75rem 0 0.25rem;
+    }
+    .msg-content h1 { font-size: 1.25rem; }
+    .msg-content h2 { font-size: 1.125rem; }
+    .msg-content h3 { font-size: 1rem; }
+    .msg-content table {
+      border-collapse: collapse;
+      margin: 0.5rem 0;
+      width: 100%;
+    }
+    .msg-content th, .msg-content td {
+      border: 1px solid #334155;
+      padding: 0.4rem 0.75rem;
+      text-align: left;
+    }
+    .msg-content th { background: #1e293b; font-weight: 600; }
+
+    /* Typing dots animation */
+    .typing-dot { animation: typingDot 1.4s infinite both; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingDot {
+      0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    /* Fade in animation */
+    .fade-in {
+      animation: fadeIn 0.25s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Textarea auto-resize */
+    #chatInput {
+      max-height: 200px;
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-200 font-sans">
+
+  <div id="app" class="h-full flex flex-col">
+
+    <!-- Header -->
+    <header class="flex-shrink-0 border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm">
+      <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🐈</span>
+          <h1 class="text-lg font-semibold text-white">nanobot</h1>
+          <span id="statusBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+            connecting...
+          </span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="newSession()" title="New session"
+            class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+          </button>
+          <button onclick="toggleSettings()" title="Settings"
+            class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Settings panel (hidden by default) -->
+    <div id="settingsPanel" class="hidden border-b border-slate-800 bg-slate-900/50">
+      <div class="max-w-4xl mx-auto px-4 py-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span class="text-slate-500 text-xs uppercase tracking-wider">Model</span>
+            <p id="cfgModel" class="text-slate-300 mt-0.5 font-mono text-xs">—</p>
+          </div>
+          <div>
+            <span class="text-slate-500 text-xs uppercase tracking-wider">Max Tokens</span>
+            <p id="cfgTokens" class="text-slate-300 mt-0.5 font-mono text-xs">—</p>
+          </div>
+          <div>
+            <span class="text-slate-500 text-xs uppercase tracking-wider">Temperature</span>
+            <p id="cfgTemp" class="text-slate-300 mt-0.5 font-mono text-xs">—</p>
+          </div>
+          <div>
+            <span class="text-slate-500 text-xs uppercase tracking-wider">Workspace</span>
+            <p id="cfgWorkspace" class="text-slate-300 mt-0.5 font-mono text-xs truncate">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages area -->
+    <main id="messages" class="flex-1 overflow-y-auto">
+      <div class="max-w-4xl mx-auto px-4 py-6 space-y-1">
+
+        <!-- Welcome message -->
+        <div id="welcome" class="flex flex-col items-center justify-center py-20 text-center">
+          <span class="text-5xl mb-4">🐈</span>
+          <h2 class="text-2xl font-semibold text-white mb-2">Welcome to nanobot</h2>
+          <p class="text-slate-400 max-w-md">
+            Your lightweight personal AI assistant. Type a message below to get started.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-2 justify-center">
+            <button onclick="sendQuickMessage('What can you do?')"
+              class="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+              What can you do?
+            </button>
+            <button onclick="sendQuickMessage('Tell me about yourself')"
+              class="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+              Tell me about yourself
+            </button>
+            <button onclick="sendQuickMessage('Help me write some code')"
+              class="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+              Help me write code
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Typing indicator -->
+    <div id="typingIndicator" class="hidden max-w-4xl mx-auto px-4 pb-2">
+      <div class="flex items-center gap-2 text-slate-500 text-sm">
+        <span class="text-base">🐈</span>
+        <div class="flex gap-1">
+          <span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+          <span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+          <span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+        </div>
+        <span class="text-xs">thinking...</span>
+      </div>
+    </div>
+
+    <!-- Input area -->
+    <footer class="flex-shrink-0 border-t border-slate-800 bg-slate-950/80 backdrop-blur-sm">
+      <div class="max-w-4xl mx-auto px-4 py-3">
+        <form id="chatForm" onsubmit="handleSubmit(event)" class="flex items-end gap-2">
+          <div class="flex-1 relative">
+            <textarea
+              id="chatInput"
+              rows="1"
+              placeholder="Type your message... (Shift+Enter for new line)"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-nano-500 focus:ring-1 focus:ring-nano-500 resize-none transition-colors"
+            ></textarea>
+          </div>
+          <button
+            type="submit"
+            id="sendBtn"
+            title="Send message"
+            aria-label="Send message"
+            class="flex-shrink-0 p-3 rounded-xl bg-nano-600 text-white hover:bg-nano-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </form>
+        <p class="text-center text-xs text-slate-600 mt-2">
+          nanobot web UI &middot; Connected via WebSocket
+        </p>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // State
+    // =========================================================================
+    let ws = null;
+    let sessionId = null;
+    let isTyping = false;
+    let messageCount = 0;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT = 10;
+    const RECONNECT_BASE_MS = 1000;
+
+    // =========================================================================
+    // DOM refs
+    // =========================================================================
+    const messagesEl = document.getElementById('messages');
+    const messagesContainer = messagesEl.querySelector('.space-y-1');
+    const welcomeEl = document.getElementById('welcome');
+    const typingEl = document.getElementById('typingIndicator');
+    const inputEl = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusBadge = document.getElementById('statusBadge');
+
+    // =========================================================================
+    // Markdown setup
+    // =========================================================================
+    marked.setOptions({
+      highlight: function(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          return hljs.highlight(code, { language: lang }).value;
+        }
+        return hljs.highlightAuto(code).value;
+      },
+      breaks: true,
+      gfm: true,
+    });
+
+    // =========================================================================
+    // WebSocket connection
+    // =========================================================================
+    function connect() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const url = `${proto}//${location.host}/ws/chat`;
+
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+        setStatus('connected', 'bg-emerald-900/50 text-emerald-400');
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleServerMessage(data);
+      };
+
+      ws.onclose = () => {
+        setStatus('disconnected', 'bg-red-900/50 text-red-400');
+        scheduleReconnect();
+      };
+
+      ws.onerror = () => {
+        setStatus('error', 'bg-red-900/50 text-red-400');
+      };
+    }
+
+    function scheduleReconnect() {
+      if (reconnectAttempts >= MAX_RECONNECT) {
+        setStatus('failed', 'bg-red-900/50 text-red-400');
+        return;
+      }
+      reconnectAttempts++;
+      const delay = RECONNECT_BASE_MS * Math.pow(2, Math.min(reconnectAttempts - 1, 5));
+      setStatus(`reconnecting (${reconnectAttempts})...`, 'bg-yellow-900/50 text-yellow-400');
+      setTimeout(connect, delay);
+    }
+
+    function setStatus(text, classes) {
+      statusBadge.textContent = text;
+      statusBadge.className = `text-xs px-2 py-0.5 rounded-full ${classes}`;
+    }
+
+    // =========================================================================
+    // Server message handling
+    // =========================================================================
+    function handleServerMessage(data) {
+      switch (data.type) {
+        case 'connected':
+          sessionId = data.session_id;
+          break;
+
+        case 'message':
+          hideTyping();
+          addMessage(data.role || 'assistant', data.content);
+          break;
+
+        case 'typing':
+          if (data.status) showTyping();
+          else hideTyping();
+          break;
+
+        case 'error':
+          hideTyping();
+          addMessage('error', data.content);
+          break;
+
+        case 'pong':
+          break;
+      }
+    }
+
+    // =========================================================================
+    // Chat logic
+    // =========================================================================
+    function handleSubmit(e) {
+      e.preventDefault();
+      const content = inputEl.value.trim();
+      if (!content || !ws || ws.readyState !== WebSocket.OPEN) return;
+      sendMessage(content);
+    }
+
+    function sendMessage(content) {
+      // Hide welcome on first message
+      if (messageCount === 0 && welcomeEl) {
+        welcomeEl.style.display = 'none';
+      }
+
+      addMessage('user', content);
+      ws.send(JSON.stringify({ type: 'message', content }));
+
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      inputEl.focus();
+    }
+
+    function sendQuickMessage(content) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      sendMessage(content);
+    }
+
+    function newSession() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      sendMessage('/new');
+    }
+
+    // =========================================================================
+    // Message rendering
+    // =========================================================================
+    function addMessage(role, content) {
+      messageCount++;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'fade-in';
+
+      if (role === 'user') {
+        wrapper.innerHTML = `
+          <div class="flex justify-end mb-4">
+            <div class="max-w-[85%] md:max-w-[70%]">
+              <div class="bg-nano-600/20 border border-nano-500/20 rounded-2xl rounded-tr-md px-4 py-2.5">
+                <div class="msg-content text-sm text-slate-200">${escapeHtml(content)}</div>
+              </div>
+              <div class="text-right mt-1 text-xs text-slate-600">${formatTime()}</div>
+            </div>
+          </div>`;
+      } else if (role === 'error') {
+        wrapper.innerHTML = `
+          <div class="flex mb-4">
+            <div class="max-w-[85%] md:max-w-[70%]">
+              <div class="bg-red-900/20 border border-red-500/20 rounded-2xl rounded-tl-md px-4 py-2.5">
+                <div class="msg-content text-sm text-red-300">${escapeHtml(content)}</div>
+              </div>
+            </div>
+          </div>`;
+      } else {
+        wrapper.innerHTML = `
+          <div class="flex mb-4 gap-3">
+            <div class="flex-shrink-0 w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-sm mt-0.5">
+              🐈
+            </div>
+            <div class="max-w-[85%] md:max-w-[75%] min-w-0">
+              <div class="bg-slate-900/60 border border-slate-800 rounded-2xl rounded-tl-md px-4 py-2.5">
+                <div class="msg-content text-sm text-slate-300">${renderMarkdown(content)}</div>
+              </div>
+              <div class="mt-1 text-xs text-slate-600">${formatTime()}</div>
+            </div>
+          </div>`;
+
+        // Highlight code blocks
+        wrapper.querySelectorAll('pre code').forEach(block => {
+          hljs.highlightElement(block);
+        });
+      }
+
+      messagesContainer.appendChild(wrapper);
+      scrollToBottom();
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return '';
+      try {
+        return marked.parse(text);
+      } catch {
+        return escapeHtml(text);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatTime() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      });
+    }
+
+    // =========================================================================
+    // Typing indicator
+    // =========================================================================
+    function showTyping() {
+      typingEl.classList.remove('hidden');
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      typingEl.classList.add('hidden');
+    }
+
+    // =========================================================================
+    // Settings panel
+    // =========================================================================
+    function toggleSettings() {
+      const panel = document.getElementById('settingsPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        loadConfig();
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        document.getElementById('cfgModel').textContent = data.model || '—';
+        document.getElementById('cfgTokens').textContent = data.max_tokens || '—';
+        document.getElementById('cfgTemp').textContent = data.temperature || '—';
+        document.getElementById('cfgWorkspace').textContent = data.workspace || '—';
+      } catch {
+        // Silently fail
+      }
+    }
+
+    // =========================================================================
+    // Input handling
+    // =========================================================================
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit(e);
+      }
+    });
+
+    // Keep-alive ping
+    setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+
+    // =========================================================================
+    // Init
+    // =========================================================================
+    connect();
+    inputEl.focus();
+  </script>
+</body>
+</html>
