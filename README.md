@@ -1,5 +1,4 @@
-<div align="center">
-  <img src="nanobot_logo.png" alt="pocketbot" width="500">
+  <img src="pocketbot_logo.png" alt="pocketbot" width="500">
   <h1>pocketbot: Pocket-Sized AI Assistant</h1>
   <p>
     <a href="https://pypi.org/project/pocketbot-ai/"><img src="https://img.shields.io/pypi/v/pocketbot-ai" alt="PyPI"></a>
@@ -9,7 +8,7 @@
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/Feishu-Group-E9DBFC?style=flat&logo=feishu&logoColor=white" alt="Feishu"></a>
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/WeChat-Group-C5EAB4?style=flat&logo=wechat&logoColor=white" alt="WeChat"></a>
     <a href="https://github.com/jojo-swe/nanobot/discussions"><img src="https://img.shields.io/badge/GitHub-Discussions-181717?style=flat&logo=github&logoColor=white" alt="GitHub Discussions"></a>
-  </p>
+    </p>
 </div>
 
 🤖 **pocketbot** is a **pocket-sized** personal AI assistant with a modern web interface, forked from [nanobot](https://github.com/HKUDS/nanobot) and enhanced with web UI capabilities.
@@ -39,7 +38,7 @@
 
 ## Key Features of pocketbot:
 
-� **Pocket-Sized**: Small enough to run anywhere with minimal resources.
+📱 **Pocket-Sized**: Small enough to run anywhere with minimal resources.
 
 🌐 **Web Interface**: Modern web UI with real-time chat and responsive design.
 
@@ -52,11 +51,12 @@
 ## 🏗️ Architecture
 
 <p align="center">
-  <img src="nanobot_arch.png" alt="nanobot architecture" width="800">
+  <img src="pocketbot_arch.png" alt="pocketbot architecture" width="800">
 </p>
 
 ## ✨ Features
 
+<!--
 <table align="center">
   <tr align="center">
     <th><p align="center">📈 24/7 Real-Time Market Analysis</p></th>
@@ -77,9 +77,10 @@
     <td align="center">Learn • Memory • Reasoning</td>
   </tr>
 </table>
+-->
 
 <p align="center">
-  <img src="case/gui.png" alt="nanobot web UI" width="800">
+  <img src="case/gui.png" alt="pocketbot web UI" width="800">
 </p>
 
 ## 📦 Install

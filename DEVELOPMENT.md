@@ -21,13 +21,13 @@ This guide provides detailed information for developers working on the jojo-swe/
 
 2. **Configure API keys**
    ```bash
-   nanobot onboard
+   pocketbot onboard
    # Edit ~/.nanobot/config.json to add your API key
    ```
 
 3. **Test installation**
    ```bash
-   nanobot agent -m "Hello!"
+   pocketbot agent -m "Hello!"
    ```
 
 ## Architecture Overview
@@ -72,20 +72,21 @@ git checkout -b feature/your-feature
 # ...
 
 # Test your changes
-nanobot agent -m "Test your changes"
+pocketbot agent -m "Test your changes"
 
 # Run linting
 ruff check nanobot/
 ruff format nanobot/
 ```
 
+
 ### 2. Testing
 
 ```bash
 # Test CLI commands
-nanobot status
-nanobot web  # Test web UI
-nanobot agent
+pocketbot status
+pocketbot web  # Test web UI
+pocketbot agent
 
 # Test with different configurations
 # Edit ~/.nanobot/config.json to test different scenarios
@@ -95,7 +96,7 @@ nanobot agent
 
 ```bash
 # Enable verbose logging
-nanobot agent --logs
+pocketbot agent --logs
 
 # Test specific components
 python -m nanobot.agent.loop
@@ -116,7 +117,7 @@ The web UI consists of:
 
 1. **Start the web server**
    ```bash
-   nanobot web --host localhost --port 8080 --verbose
+   pocketbot web --host localhost --port 8080 --verbose
    ```
 
 2. **Access the UI**
@@ -241,7 +242,7 @@ The provider registry (`nanobot/providers/registry.py`) handles:
 ```bash
 # Enable debug logging
 export NANOBOT_DEBUG=1
-nanobot agent --logs
+pocketbot agent --logs
 
 # Test specific components
 python -c "from nanobot.config.loader import load_config; print(load_config())"
