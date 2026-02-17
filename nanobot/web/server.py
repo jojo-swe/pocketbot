@@ -13,6 +13,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPExcept
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from loguru import logger
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 from nanobot.bus.events import InboundMessage
 from nanobot.bus.queue import MessageBus
@@ -23,6 +25,24 @@ _BOOT_TIME = time.monotonic()
 
 # Safe settings fields that can be updated via the web UI (no secrets)
 _SAFE_SETTINGS = {"model", "max_tokens", "temperature", "memory_window"}
+
+
+class SecureHeadersMiddleware(BaseHTTPMiddleware):
+    """Inject security headers on every HTTP response."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        super().__init__(app)
+
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        return response
 
 
 def _is_local_request(request: Request) -> bool:
@@ -48,6 +68,9 @@ def create_app(
         Configured FastAPI application.
     """
     app = FastAPI(title="pocketbot", docs_url="/api/docs")
+
+    # Security headers on every response
+    app.add_middleware(SecureHeadersMiddleware)
 
     # Allow companion app / other origins to call the API
     app.add_middleware(
@@ -188,6 +211,67 @@ def create_app(
         return {"pong": True, "timestamp": _timestamp()}
 
     # -------------------------------------------------------------------
+    # Push notification support (Expo Push)
+    # -------------------------------------------------------------------
+
+    # Set of registered Expo push tokens
+    push_tokens: set[str] = set()
+
+    @app.post("/api/push/register", dependencies=[auth_dep])
+    async def push_register(request: Request):
+        """Register an Expo push token for notifications."""
+        body = await request.json()
+        token = body.get("token", "").strip()
+        if not token or not token.startswith("ExponentPushToken["):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid Expo push token",
+            )
+        push_tokens.add(token)
+        logger.info(f"Push token registered ({len(push_tokens)} total)")
+        return {"registered": True, "total": len(push_tokens)}
+
+    @app.delete("/api/push/register", dependencies=[auth_dep])
+    async def push_unregister(request: Request):
+        """Unregister an Expo push token."""
+        body = await request.json()
+        token = body.get("token", "").strip()
+        push_tokens.discard(token)
+        return {"unregistered": True, "total": len(push_tokens)}
+
+    @app.get("/api/push/tokens", dependencies=[auth_dep])
+    async def push_list_tokens():
+        """List registered push token count (not the tokens themselves)."""
+        return {"count": len(push_tokens)}
+
+    async def _send_push(title: str, body: str) -> None:
+        """Send push notification to all registered Expo tokens."""
+        if not push_tokens:
+            return
+        import httpx
+        messages = [
+            {
+                "to": tok,
+                "sound": "default",
+                "title": title,
+                "body": body[:200],
+            }
+            for tok in push_tokens
+        ]
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    "https://exp.host/--/api/v2/push/send",
+                    json=messages,
+                    headers={
+                        "Content-Type": "application/json",
+                    },
+                    timeout=10.0,
+                )
+        except Exception as e:
+            logger.warning(f"Push notification failed: {e}")
+
+    # -------------------------------------------------------------------
     # WebSocket chat endpoint
     # -------------------------------------------------------------------
 
@@ -255,6 +339,13 @@ def create_app(
                         "content": response_text or "",
                         "timestamp": _timestamp(),
                     })
+                    # Fire push for backgrounded companion apps
+                    asyncio.create_task(
+                        _send_push(
+                            "pocketbot",
+                            (response_text or "")[:200],
+                        )
+                    )
                 except Exception as e:
                     logger.error(f"Error processing web message: {e}")
                     await ws.send_json({
