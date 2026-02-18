@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import time
 import uuid
 from pathlib import Path
@@ -227,7 +228,6 @@ def create_app(
         The caller must immediately update their stored token — the old one
         is invalidated as soon as this response is received.
         """
-        import secrets
         if not config:
             raise HTTPException(status_code=503, detail="Config not available")
         if not config.web.auth.enabled:

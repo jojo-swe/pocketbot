@@ -112,7 +112,12 @@ function _connect(): void {
       return;
     }
     callbacks?.onStateChange('disconnected');
-    scheduleReconnect();
+    if (event.code === 1001) {
+      // Server closed due to idle timeout — reconnect immediately (clean close)
+      _connect();
+    } else {
+      scheduleReconnect();
+    }
   };
 
   ws.onerror = () => {

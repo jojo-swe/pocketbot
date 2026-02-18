@@ -30,15 +30,37 @@ import {
   uploadFile,
   mediaUrl,
 } from '../services/upload';
+import {
+  loadChatHistory,
+  saveChatHistory,
+  clearChatHistory,
+} from '../services/storage';
 
 export default function ChatScreen() {
   const { conn } = useConnection();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [state, setState] = useState<ConnectionState>('disconnected');
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const flatListRef = useRef<FlatList>(null);
+
+  // Load persisted history on first mount
+  useEffect(() => {
+    loadChatHistory().then((history) => {
+      if (history.length > 0) {
+        setMessages(history as ChatMessage[]);
+      }
+      setHistoryLoaded(true);
+    });
+  }, []);
+
+  // Persist messages whenever they change (after history is loaded)
+  useEffect(() => {
+    if (!historyLoaded) return;
+    saveChatHistory(messages);
+  }, [messages, historyLoaded]);
 
   useEffect(() => {
     if (!conn.url) return;
@@ -141,6 +163,24 @@ export default function ChatScreen() {
 
   // ── Send ────────────────────────────────────────────────────────────────────
 
+  const handleClearHistory = useCallback(() => {
+    Alert.alert(
+      'Clear History',
+      'Delete all chat messages? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            setMessages([]);
+            clearChatHistory();
+          },
+        },
+      ],
+    );
+  }, []);
+
   const handleSend = useCallback(() => {
     const text = input.trim();
     const ready = attachments.filter((a) => a.serverUrl && !a.uploading);
@@ -217,6 +257,15 @@ export default function ChatScreen() {
       <View style={styles.statusBar}>
         <View style={[styles.statusDot, { backgroundColor: stateColor }]} />
         <Text style={styles.statusText}>{state}</Text>
+        {messages.length > 0 && (
+          <TouchableOpacity
+            style={styles.clearBtn}
+            onPress={handleClearHistory}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={15} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Messages */}
@@ -323,7 +372,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: spacing.sm },
-  statusText: { fontSize: 12, color: colors.textMuted },
+  statusText: { fontSize: 12, color: colors.textMuted, flex: 1 },
+  clearBtn: { padding: spacing.xs },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxl },
   emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.white, marginBottom: spacing.xs },
