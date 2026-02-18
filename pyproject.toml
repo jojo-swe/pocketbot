@@ -1,6 +1,6 @@
 [project]
 name = "pocketbot-ai"
-version = "0.1.3.post7+jojo"
+version = "0.1.4"
 description = "A pocket-sized personal AI assistant with web interface (fork of HKUDS/nanobot)"
 requires-python = ">=3.11"
 license = {text = "MIT"}

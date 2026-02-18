@@ -17,25 +17,33 @@
 
 ## 📢 News
 
-- **2026-02-17** � Companion app MVP (Expo React Native) — chat, status, settings screens.
+- **2026-02-18** 🔒 Phase 3.5: Token rotation, WS idle timeout, insecure-binding warnings.
+- **2026-02-18** 📱 Phase 3.4: QR code device pairing — scan from web UI to auto-connect app.
+- **2026-02-18** 📎 Phase 3.3: File/image attachments in chat (web UI + companion app).
+- **2026-02-17** � Phase 3.2: Push notifications via Expo for backgrounded app.
+- **2026-02-17** 🎉 Released **v0.1.4** — MCP support, progress streaming, SiliconFlow, Docker Compose, and more. See [release notes](https://github.com/HKUDS/nanobot/releases/tag/v0.1.4).
+- **2026-02-17** 📱 Companion app MVP (Expo React Native) — chat, status, settings screens.
 - **2026-02-17** 🏷️ Centralized fork identity (`identity.py`) — all paths now fork-safe.
-- **2026-02-16** 🌐 Added web UI with FastAPI server and WebSocket chat interface! Use `pocketbot web` to start.
+- **2026-02-16** � Added web UI with FastAPI server and WebSocket chat interface! Use `pocketbot web` to start.
 - **2026-02-16** 🦞 Integrated [ClawHub](https://clawhub.ai) skill — search and install public agent skills.
-- **2026-02-15** 🔑 Added OpenAI Codex provider with OAuth login support.
-- **2026-02-15** 🔑 Added GitHub Copilot provider support.
+- **2026-02-15** 🔑 Added OpenAI Codex + GitHub Copilot provider support.
 - **2026-02-14** 🔌 pocketbot now supports MCP! See [MCP section](#mcp-model-context-protocol) for details.
-- **2026-02-13** 🎉 Released v0.1.3.post7 — includes security hardening and multiple improvements. All users are recommended to upgrade to the latest version. See [release notes](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post7) for more details.
-- **2026-02-12** 🧠 Redesigned memory system — Less code, more reliable. Join the [discussion](https://github.com/HKUDS/nanobot/discussions/566) about it!
-- **2026-02-11** ✨ Enhanced CLI experience and added MiniMax support!
-- **2026-02-10** 🎉 Released v0.1.3.post6 with improvements! Check the updates [notes](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post6) and our [roadmap](https://github.com/HKUDS/nanobot/discussions/431).
-- **2026-02-09** 💬 Added Slack, Email, and QQ support — pocketbot now supports multiple chat platforms!
+- **2026-02-13** 🎉 Released **v0.1.3.post7** — security hardening. See [release notes](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post7).
+- **2026-02-12** 🧠 Redesigned memory system — Less code, more reliable.
+- **2026-02-09** 💬 Added Slack, Email, and QQ support!
 - **2026-02-08** 🔧 Refactored Providers—adding a new LLM provider now takes just 2 simple steps! Check [here](#providers).
-- **2026-02-07** 🚀 Released v0.1.3.post5 with Qwen support & several key improvements! Check [here](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post5) for details.
+
+<details>
+<summary>Earlier news</summary>
+
+- **2026-02-07** 🚀 Released **v0.1.3.post5** with Qwen support & several key improvements! Check [here](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post5) for details.
 - **2026-02-06** ✨ Added Moonshot/Kimi provider, Discord integration, and enhanced security hardening!
 - **2026-02-05** ✨ Added Feishu channel, DeepSeek provider, and enhanced scheduled tasks support!
-- **2026-02-04** 🚀 Released v0.1.3.post4 with multi-provider & Docker support! Check [here](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post4) for details.
+- **2026-02-04** 🚀 Released **v0.1.3.post4** with multi-provider & Docker support! Check [here](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post4) for details.
 - **2026-02-03** ⚡ Integrated vLLM for local LLM support and improved natural language task scheduling!
 - **2026-02-02** 🎉 pocketbot officially launched! Welcome to try 🐈 pocketbot!
+
+</details>
 
 ## Key Features of pocketbot:
 
@@ -596,7 +604,7 @@ Config file: `~/.pocketbot/config.json`
 
 | Provider | Purpose | Get API Key |
 |----------|---------|-------------|
-| `custom` | Any OpenAI-compatible endpoint | — |
+| `custom` | Any OpenAI-compatible endpoint (direct, no LiteLLM) | — |
 | `openrouter` | LLM (recommended, access to all models) | [openrouter.ai](https://openrouter.ai) |
 | `anthropic` | LLM (Claude direct) | [console.anthropic.com](https://console.anthropic.com) |
 | `openai` | LLM (GPT direct) | [platform.openai.com](https://platform.openai.com) |
@@ -605,12 +613,13 @@ Config file: `~/.pocketbot/config.json`
 | `gemini` | LLM (Gemini direct) | [aistudio.google.com](https://aistudio.google.com) |
 | `minimax` | LLM (MiniMax direct) | [platform.minimax.io](https://platform.minimax.io) |
 | `aihubmix` | LLM (API gateway, access to all models) | [aihubmix.com](https://aihubmix.com) |
+| `siliconflow` | LLM (SiliconFlow/硅基流动, API gateway) | [siliconflow.cn](https://siliconflow.cn) |
 | `dashscope` | LLM (Qwen) | [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com) |
 | `moonshot` | LLM (Moonshot/Kimi) | [platform.moonshot.cn](https://platform.moonshot.cn) |
 | `zhipu` | LLM (Zhipu GLM) | [open.bigmodel.cn](https://open.bigmodel.cn) |
 | `vllm` | LLM (local, any OpenAI-compatible server) | — |
 | `openai_codex` | LLM (Codex, OAuth) | `pocketbot provider login openai-codex` |
-| `github_copilot` | LLM (GitHub Copilot, OAuth) | Requires [GitHub Copilot](https://github.com/features/copilot) subscription |
+| `github_copilot` | LLM (GitHub Copilot, OAuth) | `pocketbot provider login github-copilot` |
 
 <details>
 <summary><b>OpenAI Codex (OAuth)</b></summary>
@@ -645,7 +654,7 @@ pocketbot agent -m "Hello!"
 <details>
 <summary><b>Custom Provider (Any OpenAI-compatible API)</b></summary>
 
-If your provider is not listed above but exposes an **OpenAI-compatible API** (e.g. Together AI, Fireworks, Azure OpenAI, self-hosted endpoints), use the `custom` provider:
+Connects directly to any OpenAI-compatible endpoint — LM Studio, llama.cpp, Together AI, Fireworks, Azure OpenAI, or any self-hosted server. Bypasses LiteLLM; model name is passed as-is.
 
 ```json
 {
@@ -663,7 +672,7 @@ If your provider is not listed above but exposes an **OpenAI-compatible API** (e
 }
 ```
 
-> The `custom` provider routes through LiteLLM's OpenAI-compatible path. It works with any endpoint that follows the OpenAI chat completions API format. The model name is passed directly to the endpoint without any prefix.
+> For local servers that don't require a key, set `apiKey` to any non-empty string (e.g. `"no-key"`).
 
 </details>
 
@@ -833,6 +842,22 @@ pocketbot cron remove <job_id>
 
 > [!TIP]
 > The `-v ~/.pocketbot:/root/.pocketbot` flag mounts your local config directory into the container, so your config and workspace persist across container restarts.
+
+### Docker Compose
+
+```bash
+docker compose run --rm nanobot-cli onboard   # first-time setup
+vim ~/.pocketbot/config.json                  # add API keys
+docker compose up -d nanobot-gateway          # start gateway
+```
+
+```bash
+docker compose run --rm nanobot-cli agent -m "Hello!"   # run CLI
+docker compose logs -f nanobot-gateway                   # view logs
+docker compose down                                      # stop
+```
+
+### Docker
 
 Build and run pocketbot in a container:
 
