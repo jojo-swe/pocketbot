@@ -424,6 +424,62 @@ def gateway(
     asyncio.run(run())
 
 
+# ============================================================================
+# Web UI
+# ============================================================================
+
+
+@app.command()
+def web(
+    host: str = typer.Option(None, "--host", "-H", help="Host to bind to"),
+    port: int = typer.Option(None, "--port", "-p", help="Port to listen on"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+):
+    """Start the nanobot web UI."""
+    from nanobot.config.loader import load_config
+    from nanobot.bus.queue import MessageBus
+    from nanobot.agent.loop import AgentLoop
+    from nanobot.session.manager import SessionManager
+
+    if verbose:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+
+    config = load_config()
+    web_host = host or config.web.host
+    web_port = port or config.web.port
+
+    console.print(f"{__logo__} Starting nanobot web UI...")
+
+    bus = MessageBus()
+    provider = _make_provider(config)
+    session_manager = SessionManager(config.workspace_path)
+
+    agent_loop = AgentLoop(
+        bus=bus,
+        provider=provider,
+        workspace=config.workspace_path,
+        model=config.agents.defaults.model,
+        temperature=config.agents.defaults.temperature,
+        max_tokens=config.agents.defaults.max_tokens,
+        max_iterations=config.agents.defaults.max_tool_iterations,
+        memory_window=config.agents.defaults.memory_window,
+        brave_api_key=config.tools.web.search.api_key or None,
+        exec_config=config.tools.exec,
+        restrict_to_workspace=config.tools.restrict_to_workspace,
+        session_manager=session_manager,
+        mcp_servers=config.tools.mcp_servers,
+    )
+
+    from nanobot.web.server import create_app
+    web_app = create_app(bus=bus, agent_loop=agent_loop, config=config)
+
+    console.print(f"[green]✓[/green] Web UI: http://{web_host}:{web_port}")
+    console.print(f"[green]✓[/green] Model: {config.agents.defaults.model}")
+    console.print(f"[dim]Press Ctrl+C to stop[/dim]\n")
+
+    import uvicorn
+    uvicorn.run(web_app, host=web_host, port=web_port, log_level="info" if verbose else "warning")
 
 
 # ============================================================================
