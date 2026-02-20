@@ -201,6 +201,20 @@ class GatewayConfig(BaseModel):
     port: int = 18790
 
 
+class WebAuthConfig(BaseModel):
+    """Web UI authentication configuration."""
+    enabled: bool = False
+    token: str = ""  # Bearer token for API/WebSocket auth
+
+
+class WebConfig(BaseModel):
+    """Web UI server configuration."""
+    enabled: bool = False
+    host: str = "localhost"
+    port: int = 8080
+    auth: WebAuthConfig = Field(default_factory=WebAuthConfig)
+
+
 class WebSearchConfig(BaseModel):
     """Web search tool configuration."""
     api_key: str = ""  # Brave Search API key
@@ -239,6 +253,7 @@ class Config(BaseSettings):
     channels: ChannelsConfig = Field(default_factory=ChannelsConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
+    web: WebConfig = Field(default_factory=WebConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     
     @property
