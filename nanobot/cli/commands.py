@@ -198,7 +198,7 @@ def onboard():
         console.print(f"[green]✓[/green] Created workspace at {workspace}")
     
     # Create default bootstrap files
-    _create_workspace_templates(workspace)
+    sync_workspace_templates(workspace)
     
     from nanobot.identity import APP_NAME, CONFIG_PATH, FORK_REPO
     console.print(f"\n{__logo__} {APP_NAME} is ready!")
