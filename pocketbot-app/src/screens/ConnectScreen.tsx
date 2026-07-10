@@ -19,7 +19,7 @@ import QrScanScreen from './QrScanScreen';
 export default function ConnectScreen() {
   const { conn, setConn } = useConnection();
   const [url, setUrl] = useState(conn.url || 'http://');
-  const [token, setToken] = useState(conn.token || '');
+  const [secret, setSecret] = useState(conn.secret || '');
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -32,28 +32,28 @@ export default function ConnectScreen() {
     }
     setError('');
     setTesting(true);
-    const ok = await testConnection({ url: trimmed, token: token.trim() });
+    const ok = await testConnection({ url: trimmed, secret: secret.trim() });
     setTesting(false);
     if (!ok) {
-      setError('Could not reach server. Check URL and token.');
+      setError('Could not reach server. Check URL and secret.');
       return;
     }
-    await setConn({ url: trimmed, token: token.trim() });
+    await setConn({ url: trimmed, secret: secret.trim() });
   };
 
-  const handlePaired = async (pairedUrl: string, pairedToken: string) => {
+  const handlePaired = async (pairedUrl: string, pairedSecret: string) => {
     setScanning(false);
     setUrl(pairedUrl);
-    setToken(pairedToken);
+    setSecret(pairedSecret);
     setError('');
     setTesting(true);
-    const ok = await testConnection({ url: pairedUrl, token: pairedToken });
+    const ok = await testConnection({ url: pairedUrl, secret: pairedSecret });
     setTesting(false);
     if (!ok) {
       setError('Scanned server is unreachable. Check your network.');
       return;
     }
-    await setConn({ url: pairedUrl, token: pairedToken });
+    await setConn({ url: pairedUrl, secret: pairedSecret });
   };
 
   if (scanning) {
@@ -110,12 +110,12 @@ export default function ConnectScreen() {
           />
 
           <Text style={[styles.label, { marginTop: spacing.lg }]}>
-            Auth Token (optional)
+            Bootstrap Secret (optional)
           </Text>
           <TextInput
             style={styles.input}
-            value={token}
-            onChangeText={setToken}
+            value={secret}
+            onChangeText={setSecret}
             placeholder="Leave blank for local access"
             placeholderTextColor={colors.textMuted}
             autoCapitalize="none"
@@ -141,7 +141,7 @@ export default function ConnectScreen() {
 
         <Text style={styles.hint}>
           Start your server with{' '}
-          <Text style={styles.code}>pocketbot web</Text>
+          <Text style={styles.code}>pocketbot gateway</Text>
           {'\n'}then tap the 📱 icon in the web UI to pair.
         </Text>
       </ScrollView>

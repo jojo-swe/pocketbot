@@ -1,15 +1,9 @@
 /**
- * File upload service — uploads files to the pocketbot /api/upload endpoint.
+ * File helpers — converts local files to base64 data URLs for inline
+ * media in gateway WebSocket message frames.
  */
 
 import { ServerConnection } from './storage';
-
-export interface UploadResult {
-  filename: string;
-  url: string;
-  size: number;
-  content_type: string;
-}
 
 export interface PendingAttachment {
   /** Local URI (file:// or content://) */
@@ -18,48 +12,43 @@ export interface PendingAttachment {
   name: string;
   /** MIME type */
   mimeType: string;
-  /** Server URL after upload, null while uploading */
+  /** Base64 data URL after conversion, null while processing */
   serverUrl: string | null;
-  /** True if upload is in progress */
+  /** True if processing is in progress */
   uploading: boolean;
-  /** Error message if upload failed */
+  /** Error message if conversion failed */
   error: string | null;
 }
 
 /**
- * Upload a file to the server and return the result.
+ * Read a local file and convert it to a base64 data URL.
+ * Uses expo-file-system on native, fetch on web.
  */
-export async function uploadFile(
-  conn: ServerConnection,
+export async function fileToDataUrl(
   localUri: string,
-  name: string,
   mimeType: string,
-): Promise<UploadResult> {
-  const base = conn.url.replace(/\/+$/, '');
-  const headers: Record<string, string> = {};
-  if (conn.token) {
-    headers['Authorization'] = `Bearer ${conn.token}`;
+): Promise<string> {
+  // On web, fetch + FileReader
+  if (localUri.startsWith('blob:') || localUri.startsWith('data:')) {
+    return localUri;
   }
-
-  const body = new FormData();
-  body.append('file', {
-    uri: localUri,
-    name,
-    type: mimeType,
-  } as unknown as Blob);
-
-  const res = await fetch(`${base}/api/upload`, {
-    method: 'POST',
-    headers,
-    body,
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => `HTTP ${res.status}`);
-    throw new Error(text);
+  try {
+    const FileSystem = await import('expo-file-system');
+    const base64 = await FileSystem.readAsStringAsync(localUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return `data:${mimeType};base64,${base64}`;
+  } catch {
+    // Fallback: fetch + blob (works on web)
+    const res = await fetch(localUri);
+    const blob = await res.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   }
-
-  return res.json() as Promise<UploadResult>;
 }
 
 /**

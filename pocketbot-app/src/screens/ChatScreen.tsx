@@ -24,11 +24,12 @@ import {
   connect,
   disconnect,
   sendMessage,
+  OutboundMedia,
 } from '../services/chat';
+import { bootstrap } from '../services/api';
 import {
   PendingAttachment,
-  uploadFile,
-  mediaUrl,
+  fileToDataUrl,
 } from '../services/upload';
 import {
   loadChatHistory,
@@ -62,27 +63,66 @@ export default function ChatScreen() {
     saveChatHistory(messages);
   }, [messages, historyLoaded]);
 
+  // Bootstrap then connect WS
   useEffect(() => {
     if (!conn.url) return;
-    connect(conn, {
-      onStateChange: setState,
-      onMessage: (msg) => setMessages((prev) => [...prev, msg]),
-      onTyping: setTyping,
-      onError: (err) => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const bs = await bootstrap(conn);
+        if (cancelled) return;
+        connect(conn, bs, {
+          onStateChange: setState,
+          onMessage: (msg) => setMessages((prev) => [...prev, msg]),
+          onStreamDelta: (id, text) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === id ? { ...m, content: m.content + text } : m,
+              ),
+            );
+          },
+          onStreamEnd: (id, fullText) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === id
+                  ? { ...m, streaming: false, content: fullText ?? m.content }
+                  : m,
+              ),
+            );
+          },
+          onTyping: setTyping,
+          onError: (err) => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `err_${Date.now()}`,
+                role: 'assistant',
+                content: `⚠️ ${err}`,
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+          },
+          onReady: () => {},
+        });
+      } catch (e) {
+        if (cancelled) return;
         setMessages((prev) => [
           ...prev,
           {
             id: `err_${Date.now()}`,
             role: 'assistant',
-            content: `⚠️ ${err}`,
+            content: `⚠️ Failed to connect: ${e instanceof Error ? e.message : String(e)}`,
             timestamp: new Date().toISOString(),
           },
         ]);
-      },
-      onSessionId: () => {},
-    });
-    return () => disconnect();
-  }, [conn.url, conn.token]);
+        setState('error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+      disconnect();
+    };
+  }, [conn.url, conn.secret]);
 
   const scrollToEnd = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -106,11 +146,11 @@ export default function ChatScreen() {
       setAttachments((prev) => [...prev, entry]);
 
       try {
-        const result = await uploadFile(conn, localUri, name, mimeType);
+        const dataUrl = await fileToDataUrl(localUri, mimeType);
         setAttachments((prev) =>
           prev.map((a) =>
             a === entry
-              ? { ...a, serverUrl: result.url, uploading: false }
+              ? { ...a, serverUrl: dataUrl, uploading: false }
               : a,
           ),
         );
@@ -124,7 +164,7 @@ export default function ChatScreen() {
       }
       return id;
     },
-    [conn],
+    [],
   );
 
   const pickImage = useCallback(async () => {
@@ -186,21 +226,28 @@ export default function ChatScreen() {
     const ready = attachments.filter((a) => a.serverUrl && !a.uploading);
     if (!text && ready.length === 0) return;
 
-    let fullContent = text;
+    // Build media array from base64 data URLs
+    const media: OutboundMedia[] = ready.map((a) => ({
+      data_url: a.serverUrl!,
+      name: a.name,
+    }));
+
+    // For display: include markdown links to local data URLs
+    let displayContent = text;
     if (ready.length > 0) {
       const links = ready.map((a) => {
-        const url = mediaUrl(conn, a.serverUrl!);
-        if (a.mimeType.startsWith('image/')) return `![image](${url})`;
-        return `[${a.name}](${url})`;
+        if (a.mimeType.startsWith('image/')) return `![image](${a.serverUrl})`;
+        return `[${a.name}](${a.serverUrl})`;
       }).join('\n');
-      fullContent = text ? `${text}\n${links}` : links;
+      displayContent = text ? `${text}\n${links}` : links;
     }
 
-    const userMsg = sendMessage(fullContent);
-    setMessages((prev) => [...prev, userMsg]);
+    const userMsg = sendMessage(text, media);
+    // Show display content (with markdown) in the UI
+    setMessages((prev) => [...prev, { ...userMsg, content: displayContent }]);
     setInput('');
     setAttachments([]);
-  }, [input, attachments, conn]);
+  }, [input, attachments]);
 
   // ── Rendering ───────────────────────────────────────────────────────────────
 

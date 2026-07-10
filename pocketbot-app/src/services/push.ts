@@ -70,8 +70,8 @@ export async function registerPushToken(
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (conn.token) {
-      headers['Authorization'] = `Bearer ${conn.token}`;
+    if (conn.secret) {
+      headers['Authorization'] = `Bearer ${conn.secret}`;
     }
     const res = await fetch(`${base}/api/push/register`, {
       method: 'POST',
@@ -96,8 +96,8 @@ export async function unregisterPushToken(
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (conn.token) {
-      headers['Authorization'] = `Bearer ${conn.token}`;
+    if (conn.secret) {
+      headers['Authorization'] = `Bearer ${conn.secret}`;
     }
     const res = await fetch(`${base}/api/push/register`, {
       method: 'DELETE',

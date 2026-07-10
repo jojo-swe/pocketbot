@@ -12,10 +12,16 @@ import {
 } from 'react-native';
 import { colors, spacing, radius } from '../theme';
 import { useConnection } from '../context/ConnectionContext';
-import { getConfig, putConfig, ConfigResponse, ConfigUpdate } from '../services/api';
+import {
+  bootstrap,
+  getSettings,
+  updateSettings,
+  type BootstrapResult,
+  type SettingsResponse,
+} from '../services/api';
 
 interface FieldDef {
-  key: keyof ConfigUpdate;
+  key: string;
   label: string;
   type: 'text' | 'int' | 'float';
 }
@@ -29,7 +35,8 @@ const EDITABLE_FIELDS: FieldDef[] = [
 
 export default function SettingsScreen() {
   const { conn, clear } = useConnection();
-  const [config, setConfig] = useState<ConfigResponse | null>(null);
+  const [bs, setBs] = useState<BootstrapResult | null>(null);
+  const [config, setConfig] = useState<SettingsResponse | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,16 +46,18 @@ export default function SettingsScreen() {
     setLoading(true);
     setError('');
     try {
-      const c = await getConfig(conn);
+      const bootstrapResult = await bootstrap(conn);
+      setBs(bootstrapResult);
+      const c = await getSettings(conn, bootstrapResult);
       setConfig(c);
       setDraft({
-        model: c.model,
-        max_tokens: String(c.max_tokens),
-        temperature: String(c.temperature),
-        memory_window: String(c.memory_window),
+        model: String(c.model ?? ''),
+        max_tokens: String(c.max_tokens ?? ''),
+        temperature: String(c.temperature ?? ''),
+        memory_window: String(c.memory_window ?? ''),
       });
-    } catch (e: any) {
-      setError(e.message || 'Failed to load config');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load config');
     } finally {
       setLoading(false);
     }
@@ -59,45 +68,45 @@ export default function SettingsScreen() {
   }, [loadConfig]);
 
   const hasChanges = config
-    ? draft.model !== config.model ||
-      draft.max_tokens !== String(config.max_tokens) ||
-      draft.temperature !== String(config.temperature) ||
-      draft.memory_window !== String(config.memory_window)
+    ? draft.model !== String(config.model ?? '') ||
+      draft.max_tokens !== String(config.max_tokens ?? '') ||
+      draft.temperature !== String(config.temperature ?? '') ||
+      draft.memory_window !== String(config.memory_window ?? '')
     : false;
 
   const handleSave = useCallback(async () => {
-    if (!config) return;
+    if (!config || !bs) return;
     setSaving(true);
     setError('');
     try {
-      const update: ConfigUpdate = {};
-      if (draft.model !== config.model) update.model = draft.model;
-      if (draft.max_tokens !== String(config.max_tokens))
-        update.max_tokens = parseInt(draft.max_tokens, 10);
-      if (draft.temperature !== String(config.temperature))
-        update.temperature = parseFloat(draft.temperature);
-      if (draft.memory_window !== String(config.memory_window))
-        update.memory_window = parseInt(draft.memory_window, 10);
+      const update: Record<string, unknown> = {};
+      if (draft.model !== String(config.model ?? '')) update.model = draft.model;
+      if (draft.max_tokens !== String(config.max_tokens ?? ''))
+        update.max_tokens = Number.parseInt(draft.max_tokens, 10);
+      if (draft.temperature !== String(config.temperature ?? ''))
+        update.temperature = Number.parseFloat(draft.temperature);
+      if (draft.memory_window !== String(config.memory_window ?? ''))
+        update.memory_window = Number.parseInt(draft.memory_window, 10);
 
-      const res = await putConfig(conn, update);
+      const res = await updateSettings(conn, bs, update);
       if (Object.keys(res.errors).length > 0) {
         setError(Object.values(res.errors).join(', '));
       }
       await loadConfig();
-    } catch (e: any) {
-      setError(e.message || 'Save failed');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(false);
     }
-  }, [config, draft, conn, loadConfig]);
+  }, [config, draft, conn, bs, loadConfig]);
 
   const handleReset = useCallback(() => {
     if (!config) return;
     setDraft({
-      model: config.model,
-      max_tokens: String(config.max_tokens),
-      temperature: String(config.temperature),
-      memory_window: String(config.memory_window),
+      model: String(config.model ?? ''),
+      max_tokens: String(config.max_tokens ?? ''),
+      temperature: String(config.temperature ?? ''),
+      memory_window: String(config.memory_window ?? ''),
     });
   }, [config]);
 
@@ -106,8 +115,8 @@ export default function SettingsScreen() {
 
   const handleRotateToken = useCallback(async () => {
     Alert.alert(
-      'Rotate Auth Token',
-      'This will generate a new token and invalidate the current one. You will need to update all connected clients.',
+      'Rotate Bootstrap Secret',
+      'This will generate a new bootstrap secret and invalidate the current one. You will need to update all connected clients.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -122,20 +131,20 @@ export default function SettingsScreen() {
               const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
               };
-              if (conn.token) headers['Authorization'] = `Bearer ${conn.token}`;
-              const res = await fetch(`${base}/api/auth/rotate`, {
+              if (conn.secret) headers['Authorization'] = `Bearer ${conn.secret}`;
+              const res = await fetch(`${base}/api/settings/rotate-secret`, {
                 method: 'POST',
                 headers,
               });
               if (!res.ok) {
                 const d = await res.json().catch(() => ({}));
-                throw new Error((d as any).detail || `HTTP ${res.status}`);
+                throw new Error((d as Record<string, string>).detail || `HTTP ${res.status}`);
               }
-              const data = await res.json() as { token: string };
-              setRotatedToken(data.token);
+              const data = await res.json() as { secret: string };
+              setRotatedToken(data.secret);
               Alert.alert(
-                'Token Rotated',
-                `New token:\n\n${data.token}\n\nUpdate your app connection settings with this token.`,
+                'Secret Rotated',
+                `New secret:\n\n${data.secret}\n\nUpdate your app connection settings with this secret.`,
                 [{ text: 'OK' }],
               );
             } catch (e: unknown) {
@@ -178,7 +187,7 @@ export default function SettingsScreen() {
           <TextInput
             style={[
               styles.fieldInput,
-              draft[field.key] !== (config ? String(config[field.key]) : '')
+              draft[field.key] !== (config ? String(config[field.key] ?? '') : '')
                 ? styles.fieldChanged
                 : undefined,
             ]}
@@ -220,9 +229,9 @@ export default function SettingsScreen() {
 
       {config && (
         <View style={styles.infoGrid}>
-          <InfoCard label="Workspace" value={config.workspace} />
-          <InfoCard label="Max Iterations" value={String(config.max_tool_iterations)} />
-          <InfoCard label="Web Host" value={`${config.web_host}:${config.web_port}`} />
+          <InfoCard label="Workspace" value={String(config.workspace ?? '—')} />
+          <InfoCard label="Max Iterations" value={String(config.max_tool_iterations ?? '—')} />
+          <InfoCard label="Provider" value={String(config.provider ?? '—')} />
           <InfoCard
             label="Auth"
             value={config.auth_enabled ? 'enabled' : 'disabled'}
@@ -242,12 +251,12 @@ export default function SettingsScreen() {
         {rotating ? (
           <ActivityIndicator color={colors.warning} size="small" />
         ) : (
-          <Text style={styles.rotateBtnText}>🔑 Rotate Auth Token</Text>
+          <Text style={styles.rotateBtnText}>🔑 Rotate Bootstrap Secret</Text>
         )}
       </TouchableOpacity>
       {rotatedToken ? (
         <Text style={styles.rotatedToken} selectable>
-          New token: {rotatedToken}
+          New secret: {rotatedToken}
         </Text>
       ) : null}
 

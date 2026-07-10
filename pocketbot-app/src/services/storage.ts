@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEYS = {
   SERVER_URL: 'pocketbot_server_url',
-  AUTH_TOKEN: 'pocketbot_auth_token',
+  BOOTSTRAP_SECRET: 'pocketbot_bootstrap_secret',
   CHAT_HISTORY: 'pocketbot_chat_history',
 };
 
@@ -15,22 +15,22 @@ const KEYS = {
 const MAX_HISTORY = 200;
 
 export interface ServerConnection {
-  url: string;      // e.g. "http://192.168.1.50:8080"
-  token: string;    // bearer token (empty = no auth)
+  url: string;      // gateway base URL, e.g. "http://192.168.1.50:8765"
+  secret: string;   // bootstrap secret (empty = localhost-only access)
 }
 
 const DEFAULT: ServerConnection = {
   url: '',
-  token: '',
+  secret: '',
 };
 
 export async function loadConnection(): Promise<ServerConnection> {
   try {
     const url = await AsyncStorage.getItem(KEYS.SERVER_URL);
-    const token = await AsyncStorage.getItem(KEYS.AUTH_TOKEN);
+    const secret = await AsyncStorage.getItem(KEYS.BOOTSTRAP_SECRET);
     return {
       url: url ?? DEFAULT.url,
-      token: token ?? DEFAULT.token,
+      secret: secret ?? DEFAULT.secret,
     };
   } catch {
     return DEFAULT;
@@ -39,12 +39,12 @@ export async function loadConnection(): Promise<ServerConnection> {
 
 export async function saveConnection(conn: ServerConnection): Promise<void> {
   await AsyncStorage.setItem(KEYS.SERVER_URL, conn.url);
-  await AsyncStorage.setItem(KEYS.AUTH_TOKEN, conn.token);
+  await AsyncStorage.setItem(KEYS.BOOTSTRAP_SECRET, conn.secret);
 }
 
 export async function clearConnection(): Promise<void> {
   await AsyncStorage.removeItem(KEYS.SERVER_URL);
-  await AsyncStorage.removeItem(KEYS.AUTH_TOKEN);
+  await AsyncStorage.removeItem(KEYS.BOOTSTRAP_SECRET);
 }
 
 // ── Chat history ─────────────────────────────────────────────────────────────

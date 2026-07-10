@@ -20,7 +20,7 @@ interface ConnectionContextValue {
 }
 
 const ConnectionContext = createContext<ConnectionContextValue>({
-  conn: { url: '', token: '' },
+  conn: { url: '', secret: '' },
   isConfigured: false,
   setConn: async () => {},
   clear: async () => {},
@@ -28,7 +28,7 @@ const ConnectionContext = createContext<ConnectionContextValue>({
 });
 
 export function ConnectionProvider({ children }: { children: React.ReactNode }) {
-  const [conn, _setConn] = useState<ServerConnection>({ url: '', token: '' });
+  const [conn, _setConn] = useState<ServerConnection>({ url: '', secret: '' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
   };
 
   const clear = async () => {
-    _setConn({ url: '', token: '' });
+    _setConn({ url: '', secret: '' });
     await clearConnection();
   };
 

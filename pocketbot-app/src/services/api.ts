@@ -1,61 +1,33 @@
 /**
- * REST API client for the pocketbot server.
- * Mirrors the Web UI endpoints: /api/status, /api/config, /api/ping.
+ * REST API client for the pocketbot gateway.
+ * Uses bootstrap flow to obtain short-lived tokens for WS + REST access.
  */
 
 import { ServerConnection } from './storage';
-
-function headers(conn: ServerConnection): Record<string, string> {
-  const h: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (conn.token) {
-    h['Authorization'] = `Bearer ${conn.token}`;
-  }
-  return h;
-}
 
 function baseUrl(conn: ServerConnection): string {
   return conn.url.replace(/\/+$/, '');
 }
 
-export interface StatusResponse {
-  status: string;
-  version: string;
-  uptime_seconds: number;
-  connections: number;
-  model: string;
-  provider: string;
-  auth_enabled: boolean;
-  host: string;
-  port: number;
+function bootstrapHeaders(conn: ServerConnection): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (conn.secret) {
+    h['Authorization'] = `Bearer ${conn.secret}`;
+  }
+  return h;
 }
 
-export interface ConfigResponse {
-  model: string;
-  max_tokens: number;
-  temperature: number;
-  memory_window: number;
-  max_tool_iterations: number;
-  workspace: string;
-  web_host: string;
-  web_port: number;
-  auth_enabled: boolean;
-}
+// ── Bootstrap result ───────────────────────────────────────────────────────
 
-export interface ConfigUpdate {
-  model?: string;
-  max_tokens?: number;
-  temperature?: number;
-  memory_window?: number;
-}
-
-export interface ConfigUpdateResponse {
-  updated: Record<string, unknown>;
-  errors: Record<string, string>;
-}
-
-export interface PingResponse {
-  pong: boolean;
-  timestamp: string;
+export interface BootstrapResult {
+  token: string;
+  ws_path: string;
+  ws_url: string;
+  expires_in: number;
+  api_token?: string;
+  model_name: string;
+  runtime_surface: string;
+  runtime_capabilities?: Record<string, unknown>;
 }
 
 async function fetchJSON<T>(url: string, init: RequestInit): Promise<T> {
@@ -67,46 +39,116 @@ async function fetchJSON<T>(url: string, init: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function getStatus(conn: ServerConnection): Promise<StatusResponse> {
-  return fetchJSON<StatusResponse>(`${baseUrl(conn)}/api/status`, {
-    headers: headers(conn),
+// ── Bootstrap ───────────────────────────────────────────────────────────────
+
+export function bootstrap(conn: ServerConnection): Promise<BootstrapResult> {
+  return fetchJSON<BootstrapResult>(`${baseUrl(conn)}/webui/bootstrap`, {
+    method: 'GET',
+    headers: bootstrapHeaders(conn),
   });
 }
 
-export function getConfig(conn: ServerConnection): Promise<ConfigResponse> {
-  return fetchJSON<ConfigResponse>(`${baseUrl(conn)}/api/config`, {
-    headers: headers(conn),
-  });
+// ── Settings ─────────────────────────────────────────────────────────────────
+
+export interface SettingsResponse {
+  model?: string;
+  model_preset?: string | null;
+  provider?: string;
+  max_tokens?: number;
+  temperature?: number;
+  memory_window?: number;
+  max_tool_iterations?: number;
+  workspace?: string;
+  web_host?: string;
+  web_port?: number;
+  auth_enabled?: boolean;
+  [key: string]: unknown;
 }
 
-export function putConfig(
+export interface SettingsUpdateResponse {
+  updated: Record<string, unknown>;
+  errors: Record<string, string>;
+  restart_required: boolean;
+}
+
+function apiHeaders(bootstrap: BootstrapResult): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (bootstrap.api_token) {
+    h['Authorization'] = `Bearer ${bootstrap.api_token}`;
+  }
+  return h;
+}
+
+export function getSettings(
   conn: ServerConnection,
-  update: ConfigUpdate,
-): Promise<ConfigUpdateResponse> {
-  return fetchJSON<ConfigUpdateResponse>(`${baseUrl(conn)}/api/config`, {
-    method: 'PUT',
-    headers: headers(conn),
+  bootstrap: BootstrapResult,
+): Promise<SettingsResponse> {
+  return fetchJSON<SettingsResponse>(`${baseUrl(conn)}/api/settings`, {
+    headers: apiHeaders(bootstrap),
+  });
+}
+
+export function updateSettings(
+  conn: ServerConnection,
+  bootstrap: BootstrapResult,
+  update: Record<string, unknown>,
+): Promise<SettingsUpdateResponse> {
+  return fetchJSON<SettingsUpdateResponse>(`${baseUrl(conn)}/api/settings/update`, {
+    method: 'POST',
+    headers: apiHeaders(bootstrap),
     body: JSON.stringify(update),
   });
 }
 
-export function ping(conn: ServerConnection): Promise<PingResponse> {
-  return fetchJSON<PingResponse>(`${baseUrl(conn)}/api/ping`, {
-    method: 'POST',
-    headers: headers(conn),
+// ── Sessions ─────────────────────────────────────────────────────────────────
+
+export interface SessionSummary {
+  key: string;
+  channel: string;
+  chatId: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  title?: string;
+  preview: string;
+}
+
+export interface SessionsListResponse {
+  sessions: SessionSummary[];
+}
+
+export function getSessions(
+  conn: ServerConnection,
+  bootstrap: BootstrapResult,
+): Promise<SessionsListResponse> {
+  return fetchJSON<SessionsListResponse>(`${baseUrl(conn)}/api/sessions`, {
+    headers: apiHeaders(bootstrap),
   });
 }
 
+export function deleteSession(
+  conn: ServerConnection,
+  bootstrap: BootstrapResult,
+  key: string,
+): Promise<{ deleted: boolean }> {
+  const encoded = encodeURIComponent(btoa(key));
+  return fetchJSON<{ deleted: boolean }>(
+    `${baseUrl(conn)}/api/sessions/${encoded}/delete`,
+    { method: 'POST', headers: apiHeaders(bootstrap) },
+  );
+}
+
+// ── Connectivity test ─────────────────────────────────────────────────────────
+
 /**
- * Quick connectivity test — resolves true if /api/ping succeeds.
+ * Quick connectivity test — resolves true if bootstrap succeeds.
  */
 export async function testConnection(conn: ServerConnection): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    await fetchJSON<PingResponse>(`${baseUrl(conn)}/api/ping`, {
-      method: 'POST',
-      headers: headers(conn),
+    await fetchJSON<BootstrapResult>(`${baseUrl(conn)}/webui/bootstrap`, {
+      method: 'GET',
+      headers: bootstrapHeaders(conn),
       signal: controller.signal,
     });
     clearTimeout(timeout);

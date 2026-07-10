@@ -1,11 +1,12 @@
 /**
- * WebSocket chat service — mirrors the Web UI /ws/chat protocol.
+ * WebSocket chat service — uses the gateway multiplexed WS protocol.
  *
- * Server message types: connected, message, typing, error, pong
- * Client message types: { type: "message", content: "..." } | { type: "ping" }
+ * Inbound events: ready, attached, delta, stream_end, turn_end, message, error
+ * Outbound types: new_chat, attach, message (with chat_id, content, media)
  */
 
 import { ServerConnection } from './storage';
+import type { BootstrapResult } from './api';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -14,14 +15,25 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  /** True while assistant text is still streaming (delta events arriving). */
+  streaming?: boolean;
+}
+
+export interface OutboundMedia {
+  data_url: string;
+  name?: string;
 }
 
 export interface ChatCallbacks {
   onStateChange: (state: ConnectionState) => void;
   onMessage: (msg: ChatMessage) => void;
+  /** Update an existing streaming message by id (delta accumulation). */
+  onStreamDelta: (id: string, text: string) => void;
+  /** Finalize a streaming message by id (stream_end / turn_end). */
+  onStreamEnd: (id: string, fullText?: string) => void;
   onTyping: (isTyping: boolean) => void;
   onError: (error: string) => void;
-  onSessionId: (id: string) => void;
+  onReady: (chatId: string, clientId: string) => void;
 }
 
 const RECONNECT_BASE_MS = 1000;
@@ -31,37 +43,50 @@ let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let callbacks: ChatCallbacks | null = null;
+let currentBootstrap: BootstrapResult | null = null;
 let currentConn: ServerConnection | null = null;
 let msgCounter = 0;
+let chatId: string | null = null;
+let clientId: string | null = null;
+/** ID of the assistant message currently being streamed. */
+let streamingMsgId: string | null = null;
+let intentionallyClosed = false;
 
 function makeId(): string {
   msgCounter += 1;
   return `msg_${Date.now()}_${msgCounter}`;
 }
 
-function wsUrl(conn: ServerConnection): string {
+function wsUrl(conn: ServerConnection, bootstrap: BootstrapResult): string {
   const base = conn.url.replace(/\/+$/, '');
   const proto = base.startsWith('https') ? 'wss' : 'ws';
   const host = base.replace(/^https?:\/\//, '');
-  const tokenParam = conn.token ? `?token=${encodeURIComponent(conn.token)}` : '';
-  return `${proto}://${host}/ws/chat${tokenParam}`;
+  const wsPath = bootstrap.ws_path || '/';
+  const tokenParam = `?token=${encodeURIComponent(bootstrap.token)}`;
+  return `${proto}://${host}${wsPath}${tokenParam}`;
 }
 
-export function connect(conn: ServerConnection, cb: ChatCallbacks): void {
+export function connect(
+  conn: ServerConnection,
+  bootstrap: BootstrapResult,
+  cb: ChatCallbacks,
+): void {
   disconnect();
   currentConn = conn;
+  currentBootstrap = bootstrap;
   callbacks = cb;
   reconnectAttempts = 0;
+  intentionallyClosed = false;
   _connect();
 }
 
 function _connect(): void {
-  if (!currentConn || !callbacks) return;
+  if (!currentConn || !currentBootstrap || !callbacks) return;
 
   callbacks.onStateChange('connecting');
 
   try {
-    ws = new WebSocket(wsUrl(currentConn));
+    ws = new WebSocket(wsUrl(currentConn, currentBootstrap));
   } catch {
     callbacks.onStateChange('error');
     scheduleReconnect();
@@ -75,30 +100,8 @@ function _connect(): void {
 
   ws.onmessage = (event) => {
     try {
-      const data = JSON.parse(event.data);
-      switch (data.type) {
-        case 'connected':
-          callbacks?.onSessionId(data.session_id);
-          break;
-        case 'message':
-          callbacks?.onMessage({
-            id: makeId(),
-            role: data.role || 'assistant',
-            content: data.content || '',
-            timestamp: data.timestamp || new Date().toISOString(),
-          });
-          break;
-        case 'typing':
-          callbacks?.onTyping(!!data.status);
-          break;
-        case 'error':
-          callbacks?.onError(data.content || 'Unknown error');
-          break;
-        case 'pong':
-          break;
-        default:
-          break;
-      }
+      const ev = JSON.parse(event.data);
+      handleInboundEvent(ev);
     } catch {
       // ignore parse errors
     }
@@ -106,14 +109,14 @@ function _connect(): void {
 
   ws.onclose = (event) => {
     ws = null;
-    if (event.code === 4001) {
-      callbacks?.onError('Unauthorized — check your auth token');
+    if (event.code === 4001 || event.code === 1008) {
+      callbacks?.onError('Unauthorized — check your bootstrap secret');
       callbacks?.onStateChange('error');
       return;
     }
+    if (intentionallyClosed) return;
     callbacks?.onStateChange('disconnected');
     if (event.code === 1001) {
-      // Server closed due to idle timeout — reconnect immediately (clean close)
       _connect();
     } else {
       scheduleReconnect();
@@ -123,6 +126,95 @@ function _connect(): void {
   ws.onerror = () => {
     callbacks?.onStateChange('error');
   };
+}
+
+function handleInboundEvent(ev: Record<string, unknown>): void {
+  const eventType = ev.event as string | undefined;
+
+  switch (eventType) {
+    case 'ready': {
+      chatId = (ev.chat_id as string) || null;
+      clientId = (ev.client_id as string) || null;
+      if (chatId) callbacks?.onReady(chatId, clientId ?? '');
+      break;
+    }
+
+    case 'attached': {
+      // Re-attach confirmation — no action needed for single-chat mobile app
+      break;
+    }
+
+    case 'delta': {
+      const text = (ev.text as string) || '';
+      if (!streamingMsgId) {
+        // Start a new streaming assistant message
+        streamingMsgId = makeId();
+        callbacks?.onMessage({
+          id: streamingMsgId,
+          role: 'assistant',
+          content: text,
+          timestamp: new Date().toISOString(),
+          streaming: true,
+        });
+        callbacks?.onTyping(true);
+      } else {
+        callbacks?.onStreamDelta(streamingMsgId, text);
+      }
+      break;
+    }
+
+    case 'stream_end': {
+      if (streamingMsgId) {
+        const finalText = ev.text as string | undefined;
+        callbacks?.onStreamEnd(streamingMsgId, finalText);
+        callbacks?.onTyping(false);
+        streamingMsgId = null;
+      }
+      break;
+    }
+
+    case 'turn_end': {
+      if (streamingMsgId) {
+        callbacks?.onStreamEnd(streamingMsgId);
+        callbacks?.onTyping(false);
+        streamingMsgId = null;
+      }
+      break;
+    }
+
+    case 'message': {
+      // Non-streaming full assistant message (e.g. tool hints, proactive)
+      const text = (ev.text as string) || '';
+      const kind = (ev.kind as string) || undefined;
+      // Skip trace/breadcrumb messages — only show conversational replies
+      if (kind === 'tool_hint' || kind === 'progress' || kind === 'reasoning') {
+        break;
+      }
+      callbacks?.onMessage({
+        id: makeId(),
+        role: 'assistant',
+        content: text,
+        timestamp: new Date().toISOString(),
+      });
+      break;
+    }
+
+    case 'error': {
+      const detail = (ev.detail as string) || 'Unknown error';
+      const reason = ev.reason as string | undefined;
+      callbacks?.onError(reason ? `${detail}: ${reason}` : detail);
+      break;
+    }
+
+    case 'goal_status': {
+      const status = (ev.status as string) || 'idle';
+      callbacks?.onTyping(status === 'running');
+      break;
+    }
+
+    default:
+      break;
+  }
 }
 
 function scheduleReconnect(): void {
@@ -136,6 +228,7 @@ function scheduleReconnect(): void {
 }
 
 export function disconnect(): void {
+  intentionallyClosed = true;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -149,19 +242,35 @@ export function disconnect(): void {
   callbacks?.onStateChange('disconnected');
 }
 
-export function sendMessage(content: string): ChatMessage {
+export function sendMessage(
+  content: string,
+  media?: OutboundMedia[],
+): ChatMessage {
   const msg: ChatMessage = {
     id: makeId(),
     role: 'user',
     content,
     timestamp: new Date().toISOString(),
   };
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'message', content }));
+  if (ws?.readyState === WebSocket.OPEN && chatId) {
+    const frame: Record<string, unknown> = {
+      type: 'message',
+      chat_id: chatId,
+      content,
+      webui: true,
+    };
+    if (media && media.length > 0) {
+      frame.media = media;
+    }
+    ws.send(JSON.stringify(frame));
   }
   return msg;
 }
 
 export function isConnected(): boolean {
-  return ws !== null && ws.readyState === WebSocket.OPEN;
+  return ws?.readyState === WebSocket.OPEN;
+}
+
+export function getChatId(): string | null {
+  return chatId;
 }

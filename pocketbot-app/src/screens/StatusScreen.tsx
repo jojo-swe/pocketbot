@@ -10,15 +10,7 @@ import {
 } from 'react-native';
 import { colors, spacing, radius } from '../theme';
 import { useConnection } from '../context/ConnectionContext';
-import { getStatus, ping, StatusResponse } from '../services/api';
-
-function fmtUptime(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${h}h ${m}m`;
-}
+import { bootstrap, type BootstrapResult } from '../services/api';
 
 interface StatCardProps {
   label: string;
@@ -39,7 +31,7 @@ function StatCard({ label, value, valueColor }: StatCardProps) {
 
 export default function StatusScreen() {
   const { conn } = useConnection();
-  const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [bs, setBs] = useState<BootstrapResult | null>(null);
   const [pingMs, setPingMs] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,10 +40,10 @@ export default function StatusScreen() {
     setLoading(true);
     setError('');
     try {
-      const s = await getStatus(conn);
-      setStatus(s);
-    } catch (e: any) {
-      setError(e.message || 'Failed to fetch status');
+      const result = await bootstrap(conn);
+      setBs(result);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch status');
     } finally {
       setLoading(false);
     }
@@ -60,7 +52,7 @@ export default function StatusScreen() {
   const doPing = useCallback(async () => {
     try {
       const start = Date.now();
-      await ping(conn);
+      await bootstrap(conn);
       setPingMs(Date.now() - start);
     } catch {
       setPingMs(-1);
@@ -101,33 +93,22 @@ export default function StatusScreen() {
         </View>
       ) : null}
 
-      {loading && !status ? (
+      {loading && !bs ? (
         <ActivityIndicator
           color={colors.pocket[400]}
           size="large"
           style={{ marginTop: 40 }}
         />
-      ) : status ? (
+      ) : bs ? (
         <View style={styles.grid}>
           <StatCard
-            label="Server"
-            value={status.status}
-            valueColor={status.status === 'running' ? colors.success : colors.error}
+            label="Status"
+            value="online"
+            valueColor={colors.success}
           />
-          <StatCard label="Version" value={status.version} />
-          <StatCard label="Uptime" value={fmtUptime(status.uptime_seconds)} />
-          <StatCard label="Connections" value={String(status.connections)} />
-          <StatCard
-            label="Model"
-            value={status.model}
-            valueColor={colors.pocket[400]}
-          />
-          <StatCard label="Provider" value={status.provider} />
-          <StatCard
-            label="Auth"
-            value={status.auth_enabled ? 'enabled' : 'disabled'}
-            valueColor={status.auth_enabled ? colors.success : colors.warning}
-          />
+          <StatCard label="Model" value={bs.model_name} valueColor={colors.pocket[400]} />
+          <StatCard label="Runtime" value={bs.runtime_surface} />
+          <StatCard label="Token TTL" value={`${bs.expires_in}s`} />
           <StatCard
             label="Ping"
             value={

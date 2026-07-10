@@ -19,12 +19,12 @@ import { colors, spacing, radius } from '../theme';
 interface PairPayload {
   pocketbot: boolean;
   url: string;
-  token: string;
+  secret: string;
   version?: string;
 }
 
 interface Props {
-  onPaired: (url: string, token: string) => void;
+  onPaired: (url: string, secret: string) => void;
   onCancel: () => void;
 }
 
@@ -48,7 +48,7 @@ export default function QrScanScreen({ onPaired, onCancel }: Props) {
         if (!payload.pocketbot || !payload.url) {
           throw new Error('Not a pocketbot QR code');
         }
-        onPaired(payload.url.replace(/\/+$/, ''), payload.token ?? '');
+        onPaired(payload.url.replace(/\/+$/, ''), payload.secret ?? '');
       } catch {
         Alert.alert(
           'Invalid QR Code',
