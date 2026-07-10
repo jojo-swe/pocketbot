@@ -1,27 +1,43 @@
 """Spawn tool for creating background subagents."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
-from nanobot.agent.tools.base import Tool
+from nanobot.agent.tools.base import Tool, ToolResult, tool_parameters
+from nanobot.agent.tools.context import current_request_context
+from nanobot.agent.tools.schema import NumberSchema, StringSchema, tool_parameters_schema
+from nanobot.security.workspace_access import current_workspace_scope
 
 if TYPE_CHECKING:
     from nanobot.agent.subagent import SubagentManager
 
 
+@tool_parameters(
+    tool_parameters_schema(
+        task=StringSchema("The task for the subagent to complete"),
+        label=StringSchema("Optional short label for the task (for display)"),
+        temperature=NumberSchema(
+            description=(
+                "Optional sampling temperature for the subagent "
+                "(0.0 = deterministic, higher = more creative). "
+                "Defaults to the provider's configured temperature."
+            ),
+            minimum=0.0,
+            maximum=2.0,
+        ),
+        required=["task"],
+    )
+)
 class SpawnTool(Tool):
     """Tool to spawn a subagent for background task execution."""
 
     def __init__(self, manager: "SubagentManager"):
         self._manager = manager
-        self._origin_channel = "cli"
-        self._origin_chat_id = "direct"
-        self._session_key = "cli:direct"
 
-    def set_context(self, channel: str, chat_id: str) -> None:
-        """Set the origin context for subagent announcements."""
-        self._origin_channel = channel
-        self._origin_chat_id = chat_id
-        self._session_key = f"{channel}:{chat_id}"
+    @classmethod
+    def create(cls, ctx: Any) -> Tool:
+        return cls(manager=ctx.subagent_manager)
 
     @property
     def name(self) -> str:
@@ -32,32 +48,41 @@ class SpawnTool(Tool):
         return (
             "Spawn a subagent to handle a task in the background. "
             "Use this for complex or time-consuming tasks that can run independently. "
-            "The subagent will complete the task and report back when done."
+            "The subagent will complete the task and report back when done. "
+            "For deliverables or existing projects, inspect the workspace first "
+            "and use a dedicated subdirectory when helpful."
         )
 
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "task": {
-                    "type": "string",
-                    "description": "The task for the subagent to complete",
-                },
-                "label": {
-                    "type": "string",
-                    "description": "Optional short label for the task (for display)",
-                },
-            },
-            "required": ["task"],
-        }
-
-    async def execute(self, task: str, label: str | None = None, **kwargs: Any) -> str:
+    async def execute(
+        self,
+        task: str,
+        label: str | None = None,
+        temperature: float | None = None,
+        **kwargs: Any,
+    ) -> str:
         """Spawn a subagent to execute the given task."""
+        running = self._manager.get_running_count()
+        limit = self._manager.max_concurrent_subagents
+        if running >= limit:
+            return (
+                f"Cannot spawn subagent: concurrency limit reached "
+                f"({running}/{limit} running). Wait for a running subagent "
+                f"to complete before spawning a new one."
+            )
+        request_ctx = current_request_context()
+        if request_ctx is None or request_ctx.runtime is None:
+            return ToolResult.error("Error: spawn requires an active model runtime")
+        origin_channel = request_ctx.channel
+        origin_chat_id = request_ctx.chat_id
+        session_key = request_ctx.session_key or f"{origin_channel}:{origin_chat_id}"
         return await self._manager.spawn(
             task=task,
+            runtime=request_ctx.runtime,
             label=label,
-            origin_channel=self._origin_channel,
-            origin_chat_id=self._origin_chat_id,
-            session_key=self._session_key,
+            origin_channel=origin_channel,
+            origin_chat_id=origin_chat_id,
+            session_key=session_key,
+            origin_message_id=request_ctx.message_id,
+            temperature=temperature,
+            workspace_scope=current_workspace_scope(),
         )

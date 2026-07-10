@@ -48,28 +48,42 @@ chmod 600 ~/.nanobot/config.json
     },
     "whatsapp": {
       "enabled": true,
-      "allowFrom": ["+1234567890"]
+      "allowFrom": ["1234567890"]
     }
   }
 }
 ```
 
 **Security Notes:**
-- In `v0.1.4.post3` and earlier, an empty `allowFrom` allows all users. In newer versions (including source builds), **empty `allowFrom` denies all access** — set `["*"]` to explicitly allow everyone.
+- In `v0.1.4.post3` and earlier, an empty `allowFrom` allowed all users. Since `v0.1.4.post4`, empty `allowFrom` denies all access by default — set `["*"]` to explicitly allow everyone.
 - Get your Telegram user ID from `@userinfobot`
-- Use full phone numbers with country code for WhatsApp
+- Use WhatsApp sender IDs as full phone numbers with country code and no leading `+`
 - Review access logs regularly for unauthorized access attempts
 
 ### 3. Shell Command Execution
 
 The `exec` tool can execute shell commands. While dangerous command patterns are blocked, you should:
 
+- ✅ **Enable the bwrap sandbox** (`"tools.exec.sandbox": "bwrap"`) for kernel-level isolation (Linux only)
 - ✅ Review all tool usage in agent logs
 - ✅ Understand what commands the agent is running
 - ✅ Use a dedicated user account with limited privileges
 - ✅ Never run nanobot as root
 - ❌ Don't disable security checks
 - ❌ Don't run on systems with sensitive data without careful review
+
+**Exec sandbox (bwrap):**
+
+On Linux, set `"tools.exec.sandbox": "bwrap"` to wrap every shell command in a [bubblewrap](https://github.com/containers/bubblewrap) sandbox. This uses Linux kernel namespaces to restrict what the process can see:
+
+- Workspace directory → **read-write** (agent works normally)
+- Media directory → **read-only** (can read uploaded attachments)
+- System directories (`/usr`, `/bin`, `/lib`) → **read-only** (commands still work)
+- Config files and API keys (`~/.nanobot/config.json`) → **hidden** (masked by tmpfs)
+
+Requires `bwrap` installed (`apt install bubblewrap`). Pre-installed in the official Docker image. **Not available on macOS or Windows** — bubblewrap depends on Linux kernel namespaces.
+
+Enabling the sandbox also automatically activates `restrictToWorkspace` for file tools.
 
 **Blocked patterns:**
 - `rm -rf /` - Root filesystem deletion
@@ -82,6 +96,7 @@ The `exec` tool can execute shell commands. While dangerous command patterns are
 
 File operations have path traversal protection, but:
 
+- ✅ Enable `restrictToWorkspace` or the bwrap sandbox to confine file access
 - ✅ Run nanobot with a dedicated user account
 - ✅ Use filesystem permissions to protect sensitive directories
 - ✅ Regularly audit file operations in logs
@@ -92,12 +107,12 @@ File operations have path traversal protection, but:
 **API Calls:**
 - All external API calls use HTTPS by default
 - Timeouts are configured to prevent hanging requests
+- The OpenAI-compatible API server must set `api.api_key` when binding to `0.0.0.0` or `::`; otherwise startup fails to prevent unauthenticated network access
 - Consider using a firewall to restrict outbound connections if needed
 
-**WhatsApp Bridge:**
-- The bridge binds to `127.0.0.1:3001` (localhost only, not accessible from external network)
-- Set `bridgeToken` in config to enable shared-secret authentication between Python and Node.js
-- Keep authentication data in `~/.nanobot/whatsapp-auth` secure (mode 0700)
+**WhatsApp:**
+- Keep the neonize session database under `~/.nanobot/whatsapp-auth` secure (mode 0700).
+- Use `nanobot channels login whatsapp --force` to remove and recreate the local session database when rotating linked devices.
 
 ### 6. Dependency Security
 
@@ -112,17 +127,9 @@ pip-audit
 pip install --upgrade nanobot-ai
 ```
 
-For Node.js dependencies (WhatsApp bridge):
-```bash
-cd bridge
-npm audit
-npm audit fix
-```
-
 **Important Notes:**
 - Keep `litellm` updated to the latest version for security fixes
-- We've updated `ws` to `>=8.17.1` to fix DoS vulnerability
-- Run `pip-audit` or `npm audit` regularly
+- Run `pip-audit` regularly, including optional channel dependencies such as `nanobot-ai[whatsapp]`
 - Subscribe to security advisories for nanobot and its dependencies
 
 ### 7. Production Deployment
@@ -212,7 +219,7 @@ If you suspect a security breach:
 - Input length limits on HTTP requests
 
 ✅ **Authentication**
-- Allow-list based access control — in `v0.1.4.post3` and earlier empty means allow all; in newer versions empty means deny all (`["*"]` to explicitly allow all)
+- Allow-list based access control — in `v0.1.4.post3` and earlier empty `allowFrom` allowed all; since `v0.1.4.post4` it denies all (`["*"]` explicitly allows all)
 - Failed authentication attempt logging
 
 ✅ **Resource Protection**
@@ -223,7 +230,7 @@ If you suspect a security breach:
 ✅ **Secure Communication**
 - HTTPS for all external API calls
 - TLS for Telegram API
-- WhatsApp bridge: localhost-only binding + optional token auth
+- WhatsApp session secrets stay in the local session database
 
 ## Known Limitations
 
@@ -232,7 +239,7 @@ If you suspect a security breach:
 1. **No Rate Limiting** - Users can send unlimited messages (add your own if needed)
 2. **Plain Text Config** - API keys stored in plain text (use keyring for production)
 3. **No Session Management** - No automatic session expiry
-4. **Limited Command Filtering** - Only blocks obvious dangerous patterns
+4. **Limited Command Filtering** - Only blocks obvious dangerous patterns (enable the bwrap sandbox for kernel-level isolation on Linux)
 5. **No Audit Trail** - Limited security event logging (enhance as needed)
 
 ## Security Checklist
@@ -243,6 +250,7 @@ Before deploying nanobot:
 - [ ] Config file permissions set to 0600
 - [ ] `allowFrom` lists configured for all channels
 - [ ] Running as non-root user
+- [ ] Exec sandbox enabled (`"tools.exec.sandbox": "bwrap"`) on Linux deployments
 - [ ] File system permissions properly restricted
 - [ ] Dependencies updated to latest secure versions
 - [ ] Logs monitored for security events
@@ -252,7 +260,7 @@ Before deploying nanobot:
 
 ## Updates
 
-**Last Updated**: 2026-02-03
+**Last Updated**: 2026-04-05
 
 For the latest security updates and announcements, check:
 - GitHub Security Advisories: https://github.com/HKUDS/nanobot/security/advisories

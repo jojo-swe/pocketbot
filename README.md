@@ -1,1205 +1,397 @@
-  <img src="pocketbot_logo.png" alt="pocketbot" width="500">
-  <h1>pocketbot: Pocket-Sized AI Assistant</h1>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./images/readme-cover-dark.png">
+  <img alt="nanobot README cover" src="./images/readme-cover-light.png">
+</picture>
+
+<div align="center">
+  <p>
+    <a href="https://nanobot.wiki/docs/latest/getting-started/nanobot-overview">English</a> |
+    <a href="https://nanobot.wiki/cn/docs/latest/getting-started/nanobot-overview">简体中文</a> |
+    <a href="https://nanobot.wiki/zh-Hant/docs/latest/getting-started/nanobot-overview">繁體中文</a> |
+    <a href="https://nanobot.wiki/es/docs/latest/getting-started/nanobot-overview">Español</a> |
+    <a href="https://nanobot.wiki/fr/docs/latest/getting-started/nanobot-overview">Français</a> |
+    <a href="https://nanobot.wiki/id/docs/latest/getting-started/nanobot-overview">Bahasa Indonesia</a> |
+    <a href="https://nanobot.wiki/ja/docs/latest/getting-started/nanobot-overview">日本語</a> |
+    <a href="https://nanobot.wiki/ko/docs/latest/getting-started/nanobot-overview">한국어</a> |
+    <a href="https://nanobot.wiki/ru/docs/latest/getting-started/nanobot-overview">Русский</a> |
+    <a href="https://nanobot.wiki/vi/docs/latest/getting-started/nanobot-overview">Tiếng Việt</a>
+  </p>
   <p>
     <a href="https://pypi.org/project/pocketbot-ai/"><img src="https://img.shields.io/pypi/v/pocketbot-ai" alt="PyPI"></a>
     <a href="https://pepy.tech/project/pocketbot-ai"><img src="https://static.pepy.tech/badge/pocketbot-ai" alt="Downloads"></a>
     <img src="https://img.shields.io/badge/python-≥3.11-blue" alt="Python">
     <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+    <a href="https://github.com/HKUDS/nanobot/graphs/commit-activity" target="_blank">
+        <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/HKUDS/nanobot?labelColor=%20%2332b583&color=%20%2312b76a"></a>
+    <a href="https://github.com/HKUDS/nanobot/issues?q=is%3Aissue%20is%3Aclosed" target="_blank">
+        <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3AHKUDS%2Fnanobot%20is%3Aissue%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
+    <a href="https://twitter.com/intent/follow?screen_name=nanobot_project" target="_blank">
+        <img src="https://img.shields.io/twitter/follow/nanobot_project?logo=X&color=%20%23f5f5f5" alt="follow on X(Twitter)"></a>
+    <a href="https://nanobot.wiki/docs/latest/getting-started/nanobot-overview"><img src="https://img.shields.io/badge/Docs-nanobot.wiki-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"></a>
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/Feishu-Group-E9DBFC?style=flat&logo=feishu&logoColor=white" alt="Feishu"></a>
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/WeChat-Group-C5EAB4?style=flat&logo=wechat&logoColor=white" alt="WeChat"></a>
-    <a href="https://github.com/jojo-swe/nanobot/discussions"><img src="https://img.shields.io/badge/GitHub-Discussions-181717?style=flat&logo=github&logoColor=white" alt="GitHub Discussions"></a>
-    </p>
+    <a href="https://discord.gg/MnCvHqpUGB"><img src="https://img.shields.io/badge/Discord-Community-5865F2?style=flat&logo=discord&logoColor=white" alt="Discord"></a>
+  </p>
 </div>
 
-🤖 **pocketbot** is a **pocket-sized** personal AI assistant with a modern web interface, forked from [nanobot](https://github.com/HKUDS/nanobot) and enhanced with web UI capabilities.
+🤖 **pocketbot** is a pocket-sized personal AI assistant with a modern web interface, forked from [nanobot](https://github.com/HKUDS/nanobot) and enhanced with web UI capabilities.
 
 > **Note**: This is a fork of the original [HKUDS/nanobot](https://github.com/HKUDS/nanobot) repository with web UI enhancements and rebranding.
 
-## 📢 News
+🐈 **nanobot** is an open-source, ultra-lightweight personal AI agent you can truly own. It keeps the agent core small and readable while giving you the practical pieces for real long-running work: WebUI, chat channels, tools, memory, MCP, model routing, automation, and deployment.
 
-- **2026-02-18** 🔒 Phase 3.5: Token rotation, WS idle timeout, insecure-binding warnings.
-- **2026-02-18** 📱 Phase 3.4: QR code device pairing — scan from web UI to auto-connect app.
-- **2026-02-18** 📎 Phase 3.3: File/image attachments in chat (web UI + companion app).
-- **2026-02-17** � Phase 3.2: Push notifications via Expo for backgrounded app.
-- **2026-02-17** 🎉 Released **v0.1.4** — MCP support, progress streaming, SiliconFlow, Docker Compose, and more. See [release notes](https://github.com/HKUDS/nanobot/releases/tag/v0.1.4).
-- **2026-02-17** 📱 Companion app MVP (Expo React Native) — chat, status, settings screens.
-- **2026-02-17** 🏷️ Centralized fork identity (`identity.py`) — all paths now fork-safe.
-- **2026-02-16** � Added web UI with FastAPI server and WebSocket chat interface! Use `pocketbot web` to start.
-- **2026-02-16** 🦞 Integrated [ClawHub](https://clawhub.ai) skill — search and install public agent skills.
-- **2026-02-15** 🔑 Added OpenAI Codex + GitHub Copilot provider support.
-- **2026-02-14** 🔌 pocketbot now supports MCP! See [MCP section](#mcp-model-context-protocol) for details.
-- **2026-02-13** 🎉 Released **v0.1.3.post7** — security hardening. See [release notes](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post7).
-- **2026-02-12** 🧠 Redesigned memory system — Less code, more reliable.
-- **2026-02-09** 💬 Added Slack, Email, and QQ support!
-- **2026-02-08** 🔧 Refactored Providers—adding a new LLM provider now takes just 2 simple steps! Check [here](#providers).
-- **2026-02-07** 🚀 Released **v0.1.3.post5** with Qwen support & several key improvements! Check [here](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post5) for details.
-- **2026-02-06** ✨ Added Moonshot/Kimi provider, Discord integration, and enhanced security hardening!
-- **2026-02-05** ✨ Added Feishu channel, DeepSeek provider, and enhanced scheduled tasks support!
-- **2026-02-04** 🚀 Released **v0.1.3.post4** with multi-provider & Docker support! Check [here](https://github.com/HKUDS/nanobot/releases/tag/v0.1.3.post4) for details.
-- **2026-02-03** ⚡ Integrated vLLM for local LLM support and improved natural language task scheduling!
-- **2026-02-02** 🎉 pocketbot officially launched! Welcome to try 🐈 pocketbot!
+## Start Here
 
-</details>
+| You want to... | Go to |
+|---|---|
+| Install nanobot with no terminal/config background | [Start Without Technical Background](./docs/start-without-technical-background.md) |
+| Install quickly and get one CLI reply | [Install](#-install) and [Quick Start](#-quick-start) |
+| Open the bundled browser UI | [WebUI](#-webui) |
+| Connect Telegram, Discord, WeChat, Slack, Email, Mattermost, or another chat app | [Chat Apps](./docs/chat-apps.md) |
+| Configure providers, fallback models, Langfuse, MCP, web tools, or security | [Docs](./docs/README.md) and [Configuration](./docs/configuration.md) |
+| Understand or extend the internals | [Architecture](./docs/architecture.md) and [Development](./docs/development.md) |
 
-## Key Features of pocketbot:
+## What can nanobot do?
 
-📱 **Pocket-Sized**: Small enough to run anywhere with minimal resources.
+nanobot is a self-hosted personal AI agent runtime. It can:
 
-🌐 **Web Interface**: Modern web UI with real-time chat and responsive design.
+- run in a browser WebUI or terminal
+- connect to Telegram, Discord, Slack, WeChat, Email, Mattermost, and other chat apps
+- use tools such as files, shell, web search, web fetch, MCP, cron, image generation, and subagents
+- keep session history and long-term memory through Dream
+- run long-horizon goals and scheduled automations
+- expose a Python SDK and OpenAI-compatible API for integrations
+- deploy as a long-running local or server-side agent gateway
 
-🔬 **Research-Ready**: Clean, readable code that's easy to understand, modify, and extend for research.
+## Latest Release
 
-⚡️ **Lightning Fast**: Minimal footprint means faster startup, lower resource usage, and quicker iterations.
+**v0.2.2 - Durability Release**
 
-💎 **Easy-to-Use**: One-click to deploy and you're ready to go.
+Highlights:
 
-## 🏗️ Architecture
+- Segmented WebUI transcripts
+- Python SDK runtime controls
+- Automation management
+- Search/STT provider improvements
+- Gateway/session/provider reliability
 
-<p align="center">
-  <img src="pocketbot_arch.png" alt="pocketbot architecture" width="800">
-</p>
+[See full changelog](https://github.com/HKUDS/nanobot/releases/tag/v0.2.2)
 
-## ✨ Features
+## Open Source Partners
 
 <p align="center">
-  <img src="pocketbot_gui.png" alt="pocketbot web UI" width="800">
+  <a href="https://platform.kimi.com?aff=nanobot"><picture><source media="(prefers-color-scheme: dark)" srcset="https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-06-05/1d8h69mt3v89kkekg24gg"><img alt="Kimi Open Source Friends" height="44" src="https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-06-05/1d8h69fudcmosb3pipls0"></picture></a>
+  <a href="https://platform.minimaxi.com/subscribe/token-plan?code=GILTJpMTqZ&source=link"><img alt="MiniMax" height="40" src="https://mintcdn.com/minimax-zh/1UjvBcdoC6r0UeyA/logo/light.svg?fit=max&auto=format&n=1UjvBcdoC6r0UeyA&q=85&s=672d724b639b2d88d0702fae329ea4f8"></a>
 </p>
+
+## Recent Updates
+
+- **2026-06-21** Python SDK runtime controls, optional Keenable key, cleaner run hooks.
+- **2026-06-20** Telegram rich messages, safer SDK concurrency, smoother Quick Start.
+- **2026-06-19** Firecrawl app, OpenAI image edits, safer session deletion.
+- **2026-06-18** Feishu recovery, Keenable search, Mistral polish, workspace-aware git.
+- **2026-06-17** Default idle auto-compact, clearer `/dream`, macOS installer fixes.
+
+For older updates, see the [release archive](./docs/release-archive.md) or [GitHub releases](https://github.com/HKUDS/nanobot/releases).
+
+## 💡 Why nanobot
+
+- **Persistent workflows**: goals, memory, tools, and chat context survive long-running work.
+- **Chat-native reach**: WebUI, API, Telegram, Feishu, Slack, Discord, Teams, email, and Mattermost.
+- **Model freedom**: OpenAI-compatible APIs, local LLMs, image generation, search, and fallbacks.
+- **Small core**: readable internals with MCP, memory, deployment, and automation built in.
+- **Own your stack**: inspect, customize, self-host, and extend without a giant platform.
 
 ## 📦 Install
 
-**Install from source** (latest features, recommended for development)
+> [!IMPORTANT]
+> If you want the newest features and experiments, install from source. 
+> 
+> If you want the most stable day-to-day experience, install from PyPI or with `uv`.
+
+Pick **one** install method:
+
+Prerequisites: Python 3.11 or newer. Git is only needed for a source install; Node.js/Bun are only needed if you are developing the WebUI itself.
+
+If terminals, API keys, or config files are new to you, use the guided zero-background walkthrough in [Start Without Technical Background](./docs/start-without-technical-background.md) instead of this compact README path.
+
+**One-command setup**
+
+macOS / Linux:
 
 ```bash
-git clone https://github.com/jojo-swe/nanobot.git
+curl -fsSL https://raw.githubusercontent.com/HKUDS/nanobot/main/scripts/install.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/HKUDS/nanobot/main/scripts/install.ps1 | iex
+```
+
+The default command installs or upgrades `nanobot-ai` from PyPI, then starts `nanobot onboard --wizard`. It avoids system-wide pip installs by using an active virtual environment, `uv`, `pipx`, or a managed venv under `~/.nanobot/venv`. If Quick Start finishes, skip the manual initialize/configure steps below and go straight to **Open the WebUI**.
+
+To preview the plan without changing your environment, pass `--dry-run`; combine it with `--dev` when you want to preview the main-branch install.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HKUDS/nanobot/main/scripts/install.sh | sh -s -- --dry-run
+```
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/HKUDS/nanobot/main/scripts/install.ps1))) --dry-run
+```
+
+To install the current `main` branch instead, pass `--dev`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HKUDS/nanobot/main/scripts/install.sh | sh -s -- --dev
+```
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/HKUDS/nanobot/main/scripts/install.ps1))) --dev
+```
+
+If you prefer to inspect the script first, open [`scripts/install.sh`](./scripts/install.sh) or [`scripts/install.ps1`](./scripts/install.ps1).
+
+**Install with `uv`**
+
+```bash
+uv tool install nanobot-ai
+```
+
+**Install from PyPI with pip**
+
+```bash
+python -m pip install nanobot-ai
+```
+
+If pip reports `externally-managed-environment` on macOS or Linux, use the one-command installer, `uv tool install nanobot-ai`, `pipx install nanobot-ai`, or install inside a virtual environment.
+
+**Install from source**
+
+```bash
+git clone https://github.com/HKUDS/nanobot.git
 cd nanobot
-pip install -e .
+python -m pip install -e .
+```
+
+Verify the install:
+
+```bash
+nanobot --version
 ```
 
 ## 🚀 Quick Start
 
-> [!TIP]
-> Set your API key in `~/.pocketbot/config.json`.
-> Get API keys: [OpenRouter](https://openrouter.ai/keys) (Global) · [Brave Search](https://brave.com/search/api/) (optional, for web search)
-
 **1. Initialize**
 
-```bash
-pocketbot onboard
-```
-
-**2. Configure** (`~/.pocketbot/config.json`)
-
-Add or merge these **two parts** into your config (other options have defaults).
-
-*Set your API key* (e.g. OpenRouter, recommended for global users):
-```json
-{
-  "providers": {
-    "openrouter": {
-      "apiKey": "sk-or-v1-xxx"
-    }
-  }
-}
-```
-
-*Set your model* (optionally pin a provider — defaults to auto-detection):
-```json
-{
-  "agents": {
-    "defaults": {
-      "model": "anthropic/claude-opus-4-5",
-      "provider": "openrouter"
-    }
-  }
-}
-```
-
-**3. Chat**
+Skip this step if the one-command setup already started the wizard and Quick Start finished there.
 
 ```bash
-pocketbot agent
+nanobot onboard
 ```
 
-That's it! You have a working AI assistant in 2 minutes.
+Use `nanobot onboard --wizard` if you prefer an interactive setup.
 
-## 💬 Chat Apps
+**2. Configure** (`~/.nanobot/config.json`)
 
-Talk to your pocketbot through a modern **web UI**, Telegram, Discord, WhatsApp, Feishu, Mochat, DingTalk, Slack, Email, or QQ — anytime, anywhere.
+Skip this step if you already configured provider and model settings in the wizard.
 
-| Channel | What you need |
-|---------|---------------|
-| **Web UI** | Built-in — no setup required |
-| **Telegram** | Bot token from @BotFather |
-| **Discord** | Bot token + Message Content intent |
-| **WhatsApp** | QR code scan |
-| **Feishu** | App ID + App Secret |
-| **Mochat** | Claw token (auto-setup available) |
-| **DingTalk** | App Key + App Secret |
-| **Slack** | Bot token + App-Level token |
-| **Email** | IMAP/SMTP credentials |
-| **QQ** | App ID + App Secret |
+`nanobot onboard` creates `~/.nanobot/config.json` and `~/.nanobot/workspace/`. Configure these **two parts** in the config file. Add or merge the following blocks into the existing file instead of replacing the whole file.
 
-<details>
-<summary><b>Web UI</b></summary>
+The example below uses a generic OpenAI-compatible `custom` provider so the compact path does not recommend one hosted service. Provider examples are recipes, not rankings or endorsements. For copyable provider-specific setup, see [Provider Cookbook](./docs/provider-cookbook.md).
 
-A modern, responsive web interface built with FastAPI, WebSocket, and Tailwind CSS. Features real-time chat, Markdown rendering, syntax highlighting, and typing indicators.
-
-**1. Start the web server**
-
-```bash
-pocketbot web
-```
-
-**2. Configure (optional)**
-
-Add web settings to `~/.pocketbot/config.json`:
-
-```json
-{
-  "web": {
-    "enabled": true,
-    "host": "localhost",
-    "port": 8080,
-    "auth": {
-      "enabled": false,
-      "token": ""
-    }
-  }
-}
-```
-
-**3. Access the UI**
-
-Open your browser to `http://localhost:8080`
-
-**Features:**
-- Real-time WebSocket chat
-- Markdown rendering with syntax highlighting
-- Responsive design for desktop and mobile
-- Typing indicators
-- Session management
-- Configuration panel
-- No setup required for basic use
-
-**Authentication (optional):**
-Enable token-based auth by setting `"auth.enabled": true` and providing a token. The UI will prompt for the bearer token on load.
-
-</details>
-
-<details>
-<summary><b>Telegram</b> (Recommended)</summary>
-
-**1. Create a bot**
-- Open Telegram, search `@BotFather`
-- Send `/newbot`, follow prompts
-- Copy the token
-
-**2. Configure**
-
-```json
-{
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "token": "YOUR_BOT_TOKEN",
-      "allowFrom": ["YOUR_USER_ID"]
-    }
-  }
-}
-```
-
-> You can find your **User ID** in Telegram settings. It is shown as `@yourUserId`.
-> Copy this value **without the `@` symbol** and paste it into the config file.
-
-
-**3. Run**
-
-```bash
-pocketbot gateway
-```
-
-</details>
-
-<details>
-<summary><b>Mochat (Claw IM)</b></summary>
-
-Uses **Socket.IO WebSocket** by default, with HTTP polling fallback.
-
-**1. Ask nanobot to set up Mochat for you**
-
-Simply send this message to nanobot (replace `xxx@xxx` with your real email):
-
-```
-Read https://raw.githubusercontent.com/HKUDS/MoChat/refs/heads/main/skills/nanobot/skill.md and register on MoChat. My Email account is xxx@xxx Bind me as your owner and DM me on MoChat.
-```
-
-nanobot will automatically register, configure `~/.pocketbot/config.json`, and connect to Mochat.
-
-**2. Restart gateway**
-
-```bash
-pocketbot gateway
-```
-
-That's it — nanobot handles the rest!
-
-<br>
-
-<details>
-<summary>Manual configuration (advanced)</summary>
-
-If you prefer to configure manually, add the following to `~/.pocketbot/config.json`:
-
-> Keep `claw_token` private. It should only be sent in `X-Claw-Token` header to your Mochat API endpoint.
-
-```json
-{
-  "channels": {
-    "mochat": {
-      "enabled": true,
-      "base_url": "https://mochat.io",
-      "socket_url": "https://mochat.io",
-      "socket_path": "/socket.io",
-      "claw_token": "claw_xxx",
-      "agent_user_id": "6982abcdef",
-      "sessions": ["*"],
-      "panels": ["*"],
-      "reply_delay_mode": "non-mention",
-      "reply_delay_ms": 120000
-    }
-  }
-}
-```
-
-
-
-</details>
-
-</details>
-
-<details>
-<summary><b>Discord</b></summary>
-
-**1. Create a bot**
-- Go to https://discord.com/developers/applications
-- Create an application → Bot → Add Bot
-- Copy the bot token
-
-**2. Enable intents**
-- In the Bot settings, enable **MESSAGE CONTENT INTENT**
-- (Optional) Enable **SERVER MEMBERS INTENT** if you plan to use allow lists based on member data
-
-**3. Get your User ID**
-- Discord Settings → Advanced → enable **Developer Mode**
-- Right-click your avatar → **Copy User ID**
-
-**4. Configure**
-
-```json
-{
-  "channels": {
-    "discord": {
-      "enabled": true,
-      "token": "YOUR_BOT_TOKEN",
-      "allowFrom": ["YOUR_USER_ID"],
-      "groupPolicy": "mention"
-    }
-  }
-}
-```
-
-> `groupPolicy` controls how the bot responds in group channels:
-> - `"mention"` (default) — Only respond when @mentioned
-> - `"open"` — Respond to all messages
-> DMs always respond when the sender is in `allowFrom`.
-
-**5. Invite the bot**
-- OAuth2 → URL Generator
-- Scopes: `bot`
-- Bot Permissions: `Send Messages`, `Read Message History`
-- Open the generated invite URL and add the bot to your server
-
-**6. Run**
-
-```bash
-pocketbot gateway
-```
-
-</details>
-
-<details>
-<summary><b>Matrix (Element)</b></summary>
-
-Install Matrix dependencies first:
-
-```bash
-pip install nanobot-ai[matrix]
-```
-
-**1. Create/choose a Matrix account**
-
-- Create or reuse a Matrix account on your homeserver (for example `matrix.org`).
-- Confirm you can log in with Element.
-
-**2. Get credentials**
-
-- You need:
-  - `userId` (example: `@nanobot:matrix.org`)
-  - `accessToken`
-  - `deviceId` (recommended so sync tokens can be restored across restarts)
-- You can obtain these from your homeserver login API (`/_matrix/client/v3/login`) or from your client's advanced session settings.
-
-**3. Configure**
-
-```json
-{
-  "channels": {
-    "matrix": {
-      "enabled": true,
-      "homeserver": "https://matrix.org",
-      "userId": "@nanobot:matrix.org",
-      "accessToken": "syt_xxx",
-      "deviceId": "NANOBOT01",
-      "e2eeEnabled": true,
-      "allowFrom": ["@your_user:matrix.org"],
-      "groupPolicy": "open",
-      "groupAllowFrom": [],
-      "allowRoomMentions": false,
-      "maxMediaBytes": 20971520
-    }
-  }
-}
-```
-
-> Keep a persistent `matrix-store` and stable `deviceId` — encrypted session state is lost if these change across restarts.
-
-| Option | Description |
-|--------|-------------|
-| `allowFrom` | User IDs allowed to interact. Empty = all senders. |
-| `groupPolicy` | `open` (default), `mention`, or `allowlist`. |
-| `groupAllowFrom` | Room allowlist (used when policy is `allowlist`). |
-| `allowRoomMentions` | Accept `@room` mentions in mention mode. |
-| `e2eeEnabled` | E2EE support (default `true`). Set `false` for plaintext-only. |
-| `maxMediaBytes` | Max attachment size (default `20MB`). Set `0` to block all media. |
-
-
-
-
-**4. Run**
-
-```bash
-nanobot gateway
-```
-
-</details>
-
-<details>
-<summary><b>WhatsApp</b></summary>
-
-Requires **Node.js ≥18**.
-
-**1. Link device**
-
-```bash
-nanobot channels login
-# Scan QR with WhatsApp → Settings → Linked Devices
-```
-
-**2. Configure**
-
-```json
-{
-  "channels": {
-    "whatsapp": {
-      "enabled": true,
-      "allowFrom": ["+1234567890"]
-    }
-  }
-}
-```
-
-**3. Run** (two terminals)
-
-```bash
-# Terminal 1
-nanobot channels login
-
-# Terminal 2
-pocketbot gateway
-```
-
-> WhatsApp bridge updates are not applied automatically for existing installations.
-> If you upgrade nanobot and need the latest WhatsApp bridge, run:
-> `rm -rf ~/.nanobot/bridge && nanobot channels login`
-
-</details>
-
-<details>
-<summary><b>Feishu (飞书)</b></summary>
-
-Uses **WebSocket** long connection — no public IP required.
-
-**1. Create a Feishu bot**
-- Visit [Feishu Open Platform](https://open.feishu.cn/app)
-- Create a new app → Enable **Bot** capability
-- **Permissions**: Add `im:message` (send messages) and `im:message.p2p_msg:readonly` (receive messages)
-- **Events**: Add `im.message.receive_v1` (receive messages)
-  - Select **Long Connection** mode (requires running nanobot first to establish connection)
-- Get **App ID** and **App Secret** from "Credentials & Basic Info"
-- Publish the app
-
-**2. Configure**
-
-```json
-{
-  "channels": {
-    "feishu": {
-      "enabled": true,
-      "appId": "cli_xxx",
-      "appSecret": "xxx",
-      "encryptKey": "",
-      "verificationToken": "",
-      "allowFrom": ["ou_YOUR_OPEN_ID"]
-    }
-  }
-}
-```
-
-> `encryptKey` and `verificationToken` are optional for Long Connection mode.
-> `allowFrom`: Add your open_id (find it in nanobot logs when you message the bot). Use `["*"]` to allow all users.
-
-**3. Run**
-
-```bash
-pocketbot gateway
-```
-
-> [!TIP]
-> Feishu uses WebSocket to receive messages — no webhook or public IP needed!
-
-</details>
-
-<details>
-<summary><b>QQ (QQ单聊)</b></summary>
-
-Uses **botpy SDK** with WebSocket — no public IP required. Currently supports **private messages only**.
-
-**1. Register & create bot**
-- Visit [QQ Open Platform](https://q.qq.com) → Register as a developer (personal or enterprise)
-- Create a new bot application
-- Go to **开发设置 (Developer Settings)** → copy **AppID** and **AppSecret**
-
-**2. Set up sandbox for testing**
-- In the bot management console, find **沙箱配置 (Sandbox Config)**
-- Under **在消息列表配置**, click **添加成员** and add your own QQ number
-- Once added, scan the bot's QR code with mobile QQ → open the bot profile → tap "发消息" to start chatting
-
-**3. Configure**
-
-> - `allowFrom`: Add your openid (find it in nanobot logs when you message the bot). Use `["*"]` for public access.
-> - For production: submit a review in the bot console and publish. See [QQ Bot Docs](https://bot.q.qq.com/wiki/) for the full publishing flow.
-
-```json
-{
-  "channels": {
-    "qq": {
-      "enabled": true,
-      "appId": "YOUR_APP_ID",
-      "secret": "YOUR_APP_SECRET",
-      "allowFrom": ["YOUR_OPENID"]
-    }
-  }
-}
-```
-
-**4. Run**
-
-```bash
-pocketbot gateway
-```
-
-Now send a message to the bot from QQ — it should respond!
-
-</details>
-
-<details>
-<summary><b>DingTalk (钉钉)</b></summary>
-
-Uses **Stream Mode** — no public IP required.
-
-**1. Create a DingTalk bot**
-- Visit [DingTalk Open Platform](https://open-dev.dingtalk.com/)
-- Create a new app -> Add **Robot** capability
-- **Configuration**:
-  - Toggle **Stream Mode** ON
-- **Permissions**: Add necessary permissions for sending messages
-- Get **AppKey** (Client ID) and **AppSecret** (Client Secret) from "Credentials"
-- Publish the app
-
-**2. Configure**
-
-```json
-{
-  "channels": {
-    "dingtalk": {
-      "enabled": true,
-      "clientId": "YOUR_APP_KEY",
-      "clientSecret": "YOUR_APP_SECRET",
-      "allowFrom": ["YOUR_STAFF_ID"]
-    }
-  }
-}
-```
-
-> `allowFrom`: Add your staff ID. Use `["*"]` to allow all users.
-
-**3. Run**
-
-```bash
-pocketbot gateway
-```
-
-</details>
-
-<details>
-<summary><b>Slack</b></summary>
-
-Uses **Socket Mode** — no public URL required.
-
-**1. Create a Slack app**
-- Go to [Slack API](https://api.slack.com/apps) → **Create New App** → "From scratch"
-- Pick a name and select your workspace
-
-**2. Configure the app**
-- **Socket Mode**: Toggle ON → Generate an **App-Level Token** with `connections:write` scope → copy it (`xapp-...`)
-- **OAuth & Permissions**: Add bot scopes: `chat:write`, `reactions:write`, `app_mentions:read`
-- **Event Subscriptions**: Toggle ON → Subscribe to bot events: `message.im`, `message.channels`, `app_mention` → Save Changes
-- **App Home**: Scroll to **Show Tabs** → Enable **Messages Tab** → Check **"Allow users to send Slash commands and messages from the messages tab"**
-- **Install App**: Click **Install to Workspace** → Authorize → copy the **Bot Token** (`xoxb-...`)
-
-**3. Configure nanobot**
-
-```json
-{
-  "channels": {
-    "slack": {
-      "enabled": true,
-      "botToken": "xoxb-...",
-      "appToken": "xapp-...",
-      "allowFrom": ["YOUR_SLACK_USER_ID"],
-      "groupPolicy": "mention"
-    }
-  }
-}
-```
-
-**4. Run**
-
-```bash
-pocketbot gateway
-```
-
-DM the bot directly or @mention it in a channel — it should respond!
-
-> [!TIP]
-> - `groupPolicy`: `"mention"` (default — respond only when @mentioned), `"open"` (respond to all channel messages), or `"allowlist"` (restrict to specific channels).
-> - DM policy defaults to open. Set `"dm": {"enabled": false}` to disable DMs.
-
-</details>
-
-<details>
-<summary><b>Email</b></summary>
-
-Give nanobot its own email account. It polls **IMAP** for incoming mail and replies via **SMTP** — like a personal email assistant.
-
-**1. Get credentials (Gmail example)**
-- Create a dedicated Gmail account for your bot (e.g. `my-nanobot@gmail.com`)
-- Enable 2-Step Verification → Create an [App Password](https://myaccount.google.com/apppasswords)
-- Use this app password for both IMAP and SMTP
-
-**2. Configure**
-
-> - `consentGranted` must be `true` to allow mailbox access. This is a safety gate — set `false` to fully disable.
-> - `allowFrom`: Add your email address. Use `["*"]` to accept emails from anyone.
-> - `smtpUseTls` and `smtpUseSsl` default to `true` / `false` respectively, which is correct for Gmail (port 587 + STARTTLS). No need to set them explicitly.
-> - Set `"autoReplyEnabled": false` if you only want to read/analyze emails without sending automatic replies.
-
-```json
-{
-  "channels": {
-    "email": {
-      "enabled": true,
-      "consentGranted": true,
-      "imapHost": "imap.gmail.com",
-      "imapPort": 993,
-      "imapUsername": "my-nanobot@gmail.com",
-      "imapPassword": "your-app-password",
-      "smtpHost": "smtp.gmail.com",
-      "smtpPort": 587,
-      "smtpUsername": "my-nanobot@gmail.com",
-      "smtpPassword": "your-app-password",
-      "fromAddress": "my-nanobot@gmail.com",
-      "allowFrom": ["your-real-email@gmail.com"]
-    }
-  }
-}
-```
-
-
-**3. Run**
-
-```bash
-pocketbot gateway
-```
-
-</details>
-
-## 🌐 Agent Social Network
-
-🐈 pocketbot is capable of linking to the agent social network (agent community). **Just send one message and your pocketbot joins automatically!**
-
-| Platform | How to Join (send this message to your bot) |
-|----------|-------------|
-| [**Moltbook**](https://www.moltbook.com/) | `Read https://moltbook.com/skill.md and follow the instructions to join Moltbook` |
-| [**ClawdChat**](https://clawdchat.ai/) | `Read https://clawdchat.ai/skill.md and follow the instructions to join ClawdChat` |
-
-Simply send the command above to your pocketbot (via CLI or any chat channel), and it will handle the rest.
-
-## ⚙️ Configuration
-
-Config file: `~/.pocketbot/config.json`
-
-### Providers
-
-> [!TIP]
-> - **Groq** provides free voice transcription via Whisper. If configured, Telegram voice messages will be automatically transcribed.
-> - **Zhipu Coding Plan**: If you're on Zhipu's coding plan, set `"apiBase": "https://open.bigmodel.cn/api/coding/paas/v4"` in your zhipu provider config.
-> - **MiniMax (Mainland China)**: If your API key is from MiniMax's mainland China platform (minimaxi.com), set `"apiBase": "https://api.minimaxi.com/v1"` in your minimax provider config.
-> - **VolcEngine Coding Plan**: If you're on VolcEngine's coding plan, set `"apiBase": "https://ark.cn-beijing.volces.com/api/coding/v3"` in your volcengine provider config.
-> - **Alibaba Cloud Coding Plan**: If you're on the Alibaba Cloud Coding Plan (BaiLian), set `"apiBase": "https://coding.dashscope.aliyuncs.com/v1"` in your dashscope provider config.
-
-| Provider | Purpose | Get API Key |
-|----------|---------|-------------|
-| `custom` | Any OpenAI-compatible endpoint (direct, no LiteLLM) | — |
-| `openrouter` | LLM (recommended, access to all models) | [openrouter.ai](https://openrouter.ai) |
-| `anthropic` | LLM (Claude direct) | [console.anthropic.com](https://console.anthropic.com) |
-| `azure_openai` | LLM (Azure OpenAI) | [portal.azure.com](https://portal.azure.com) |
-| `openai` | LLM (GPT direct) | [platform.openai.com](https://platform.openai.com) |
-| `deepseek` | LLM (DeepSeek direct) | [platform.deepseek.com](https://platform.deepseek.com) |
-| `groq` | LLM + **Voice transcription** (Whisper) | [console.groq.com](https://console.groq.com) |
-| `gemini` | LLM (Gemini direct) | [aistudio.google.com](https://aistudio.google.com) |
-| `minimax` | LLM (MiniMax direct) | [platform.minimaxi.com](https://platform.minimaxi.com) |
-| `aihubmix` | LLM (API gateway, access to all models) | [aihubmix.com](https://aihubmix.com) |
-| `siliconflow` | LLM (SiliconFlow/硅基流动) | [siliconflow.cn](https://siliconflow.cn) |
-| `volcengine` | LLM (VolcEngine/火山引擎) | [volcengine.com](https://www.volcengine.com) |
-| `dashscope` | LLM (Qwen) | [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com) |
-| `moonshot` | LLM (Moonshot/Kimi) | [platform.moonshot.cn](https://platform.moonshot.cn) |
-| `zhipu` | LLM (Zhipu GLM) | [open.bigmodel.cn](https://open.bigmodel.cn) |
-| `vllm` | LLM (local, any OpenAI-compatible server) | — |
-| `openai_codex` | LLM (Codex, OAuth) | `pocketbot provider login openai-codex` |
-| `github_copilot` | LLM (GitHub Copilot, OAuth) | `pocketbot provider login github-copilot` |
-
-<details>
-<summary><b>OpenAI Codex (OAuth)</b></summary>
-
-Codex uses OAuth instead of API keys. Requires a ChatGPT Plus or Pro account.
-
-**1. Login:**
-```bash
-pocketbot provider login openai-codex
-```
-
-**2. Set model** (merge into `~/.pocketbot/config.json`):
-```json
-{
-  "agents": {
-    "defaults": {
-      "model": "openai-codex/gpt-5.1-codex"
-    }
-  }
-}
-```
-
-**3. Chat:**
-```bash
-pocketbot agent -m "Hello!"
-```
-
-> Docker users: use `docker run -it` for interactive OAuth login.
-
-</details>
-
-<details>
-<summary><b>Custom Provider (Any OpenAI-compatible API)</b></summary>
-
-Connects directly to any OpenAI-compatible endpoint — LM Studio, llama.cpp, Together AI, Fireworks, Azure OpenAI, or any self-hosted server. Bypasses LiteLLM; model name is passed as-is.
+*Set your API key*:
 
 ```json
 {
   "providers": {
     "custom": {
       "apiKey": "your-api-key",
-      "apiBase": "https://api.your-provider.com/v1"
+      "apiBase": "https://api.example.com/v1"
+    }
+  }
+}
+```
+
+*Set a model preset and make it active*:
+
+```json
+{
+  "modelPresets": {
+    "primary": {
+      "label": "Primary",
+      "provider": "custom",
+      "model": "model-id-from-your-provider",
+      "maxTokens": 8192,
+      "contextWindowTokens": 200000,
+      "temperature": 0.1
     }
   },
   "agents": {
     "defaults": {
-      "model": "your-model-name"
+      "modelPreset": "primary"
     }
   }
 }
 ```
 
-> For local servers that don't require a key, set `apiKey` to any non-empty string (e.g. `"no-key"`).
+Direct `agents.defaults.provider` and `agents.defaults.model` still work for existing configs, but named presets are the recommended path because they also power `/model` switching and `fallbackModels`.
 
-</details>
+For another provider, the same config shape still applies:
 
-<details>
-<summary><b>vLLM (local / OpenAI-compatible)</b></summary>
+| Replace | Where |
+|---|---|
+| Provider config key | `providers.<provider>` |
+| API key | `providers.<provider>.apiKey` |
+| Preset provider name | `modelPresets.primary.provider` |
+| Model ID | `modelPresets.primary.model` |
+| Endpoint URL, only when needed | `providers.<provider>.apiBase` |
 
-Run your own model with vLLM or any OpenAI-compatible server, then add to config:
+**3. Open the WebUI**
 
-**1. Start the server** (example):
+Start the browser workbench:
+
 ```bash
-vllm serve meta-llama/Llama-3.1-8B-Instruct --port 8000
+nanobot webui
 ```
 
-**2. Add to config** (partial — merge into `~/.pocketbot/config.json`):
+`nanobot webui` prepares the local WebSocket channel if needed, starts the gateway, and opens `http://127.0.0.1:8765`. It binds the first-run WebUI to `127.0.0.1` by default, so it is not exposed to your LAN. Prefer not to keep a terminal open? Use `nanobot webui --background`, then manage the gateway with `nanobot gateway status`, `logs`, `restart`, and `stop`.
 
-*Provider (key can be any non-empty string for local):*
-```json
-{
-  "providers": {
-    "vllm": {
-      "apiKey": "dummy",
-      "apiBase": "http://localhost:8000/v1"
-    }
-  }
-}
+For manual or terminal-only setup, test one CLI message:
+
+```bash
+nanobot status
+nanobot agent -m "Hello!"
 ```
 
-*Model:*
-```json
-{
-  "agents": {
-    "defaults": {
-      "model": "meta-llama/Llama-3.1-8B-Instruct"
-    }
-  }
-}
+In `nanobot status`, it is normal for most providers to say `not set`. The active preset's provider should be configured, and `Config` plus `Workspace` should show check marks.
+
+If that works, start an interactive chat:
+
+```bash
+nanobot agent
 ```
 
-</details>
+Need help with `PATH`, API keys, provider/model matching, or JSON errors? See the fuller [Install and Quick Start](./docs/quick-start.md) and [Troubleshooting](./docs/troubleshooting.md).
 
-<details>
-<summary><b>Adding a New Provider (Developer Guide)</b></summary>
+- Want a pasteable provider setup? See [Provider Cookbook](./docs/provider-cookbook.md)
+- Want to understand provider/model matching? See [Providers and Models](./docs/providers.md)
+- Want web search, MCP, security settings, or more config options? See [Configuration](./docs/configuration.md)
+- Want to run locally? See [Ollama](./docs/providers.md#ollama), [vLLM or another local OpenAI-compatible server](./docs/providers.md#vllm-or-other-local-openai-compatible-server), and the full [provider reference](./docs/configuration.md#providers).
+- Want to run nanobot in chat apps like Telegram, Discord, WeChat or Feishu? See [Chat Apps](./docs/chat-apps.md)
+- Want Docker or Linux service deployment? See [Deployment](./docs/deployment.md)
 
-pocketbot uses a **Provider Registry** (`pocketbot/providers/registry.py`) as the single source of truth.
-Adding a new provider only takes **2 steps** — no if-elif chains to touch.
+## 🌐 WebUI
 
-**Step 1.** Add a `ProviderSpec` entry to `PROVIDERS` in `pocketbot/providers/registry.py`:
+The WebUI ships **inside the published wheel** — no extra build step. It is the browser workbench for chat sessions, workspace controls, Apps, Skills, Automations, and settings. For the full user guide, see [`docs/webui.md`](./docs/webui.md).
 
-```python
-ProviderSpec(
-    name="myprovider",                   # config field name
-    keywords=("myprovider", "mymodel"),  # model-name keywords for auto-matching
-    env_key="MYPROVIDER_API_KEY",        # env var for LiteLLM
-    display_name="My Provider",          # shown in `pocketbot status`
-    litellm_prefix="myprovider",         # auto-prefix: model → myprovider/model
-    skip_prefixes=("myprovider/",),      # don't double-prefix
-)
+<p align="center">
+  <img src="images/nanobot_webui.png" alt="nanobot webui preview" width="900">
+</p>
+
+**Open it**
+
+```bash
+nanobot webui
 ```
 
-**Step 2.** Add a field to `ProvidersConfig` in `pocketbot/config/schema.py`:
+The command enables the local WebSocket channel after confirmation, starts the gateway, and opens [`http://127.0.0.1:8765`](http://127.0.0.1:8765). To open it from another device on your LAN, see [WebUI docs -> LAN access](./docs/webui.md#lan-access).
 
-```python
-class ProvidersConfig(BaseModel):
-    ...
-    myprovider: ProviderConfig = ProviderConfig()
-```
-
-That's it! Environment variables, model prefixing, config matching, and `pocketbot status` display will all work automatically.
-
-**Common `ProviderSpec` options:**
-
-| Field | Description | Example |
-|-------|-------------|---------|
-| `litellm_prefix` | Auto-prefix model names for LiteLLM | `"dashscope"` → `dashscope/qwen-max` |
-| `skip_prefixes` | Don't prefix if model already starts with these | `("dashscope/", "openrouter/")` |
-| `env_extras` | Additional env vars to set | `(("ZHIPUAI_API_KEY", "{api_key}"),)` |
-| `model_overrides` | Per-model parameter overrides | `(("kimi-k2.5", {"temperature": 1.0}),)` |
-| `is_gateway` | Can route any model (like OpenRouter) | `True` |
-| `detect_by_key_prefix` | Detect gateway by API key prefix | `"sk-or-"` |
-| `detect_by_base_keyword` | Detect gateway by API base URL | `"openrouter"` |
-| `strip_model_prefix` | Strip existing prefix before re-prefixing | `True` (for AiHubMix) |
-
-</details>
-
-
-### MCP (Model Context Protocol)
+The WebUI is served by the WebSocket channel on port `8765` by default. The gateway's `18790` port is for the health endpoint, not the browser UI.
 
 > [!TIP]
-> The config format is compatible with Claude Desktop / Cursor. You can copy MCP server configs directly from any MCP server's README.
-
-pocketbot supports [MCP](https://modelcontextprotocol.io/) — connect external tool servers and use them as native agent tools.
-
-Add MCP servers to your `config.json`:
-
-```json
-{
-  "tools": {
-    "mcpServers": {
-      "filesystem": {
-        "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]
-      },
-      "my-remote-mcp": {
-        "url": "https://example.com/mcp/",
-        "headers": {
-          "Authorization": "Bearer xxxxx"
-        }
-      }
-    }
-  }
-}
-```
-
-Two transport modes are supported:
-
-| Mode | Config | Example |
-|------|--------|---------|
-| **Stdio** | `command` + `args` | Local process via `npx` / `uvx` |
-| **HTTP** | `url` + `headers` (optional) | Remote endpoint (`https://mcp.example.com/sse`) |
-
-Use `toolTimeout` to override the default 30s per-call timeout for slow servers:
-
-```json
-{
-  "tools": {
-    "mcpServers": {
-      "my-slow-server": {
-        "url": "https://example.com/mcp/",
-        "toolTimeout": 120
-      }
-    }
-  }
-}
-```
-
-MCP tools are automatically discovered and registered on startup. The LLM can use them alongside built-in tools — no extra configuration needed.
-
-
-
-
-### Security
-
-> [!TIP]
-> For production deployments, set `"restrictToWorkspace": true` in your config to sandbox the agent.
-> **Change in source / post-`v0.1.4.post3`:** In `v0.1.4.post3` and earlier, an empty `allowFrom` means "allow all senders". In newer versions (including building from source), **empty `allowFrom` denies all access by default**. To allow all senders, set `"allowFrom": ["*"]`.
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `tools.restrictToWorkspace` | `false` | When `true`, restricts **all** agent tools (shell, file read/write/edit, list) to the workspace directory. Prevents path traversal and out-of-scope access. |
-| `tools.exec.pathAppend` | `""` | Extra directories to append to `PATH` when running shell commands (e.g. `/usr/sbin` for `ufw`). |
-| `channels.*.allowFrom` | `[]` (allow all) | Whitelist of user IDs. Empty = allow everyone; non-empty = only listed users can interact. |
-
-
-## 🧩 Multiple Instances
-
-Run multiple nanobot instances simultaneously with separate configs and runtime data. Use `--config` as the main entrypoint, and optionally use `--workspace` to override the workspace for a specific run.
-
-### Quick Start
-
-```bash
-# Instance A - Telegram bot
-nanobot gateway --config ~/.nanobot-telegram/config.json
-
-# Instance B - Discord bot  
-nanobot gateway --config ~/.nanobot-discord/config.json
-
-# Instance C - Feishu bot with custom port
-nanobot gateway --config ~/.nanobot-feishu/config.json --port 18792
-```
-
-### Path Resolution
-
-When using `--config`, nanobot derives its runtime data directory from the config file location. The workspace still comes from `agents.defaults.workspace` unless you override it with `--workspace`.
-
-To open a CLI session against one of these instances locally:
-
-```bash
-nanobot agent -c ~/.nanobot-telegram/config.json -m "Hello from Telegram instance"
-nanobot agent -c ~/.nanobot-discord/config.json -m "Hello from Discord instance"
-
-# Optional one-off workspace override
-nanobot agent -c ~/.nanobot-telegram/config.json -w /tmp/nanobot-telegram-test
-```
-
-> `nanobot agent` starts a local CLI agent using the selected workspace/config. It does not attach to or proxy through an already running `nanobot gateway` process.
-
-| Component | Resolved From | Example |
-|-----------|---------------|---------|
-| **Config** | `--config` path | `~/.nanobot-A/config.json` |
-| **Workspace** | `--workspace` or config | `~/.nanobot-A/workspace/` |
-| **Cron Jobs** | config directory | `~/.nanobot-A/cron/` |
-| **Media / runtime state** | config directory | `~/.nanobot-A/media/` |
-
-### How It Works
-
-- `--config` selects which config file to load
-- By default, the workspace comes from `agents.defaults.workspace` in that config
-- If you pass `--workspace`, it overrides the workspace from the config file
-
-### Minimal Setup
-
-1. Copy your base config into a new instance directory.
-2. Set a different `agents.defaults.workspace` for that instance.
-3. Start the instance with `--config`.
-
-Example config:
-
-```json
-{
-  "agents": {
-    "defaults": {
-      "workspace": "~/.nanobot-telegram/workspace",
-      "model": "anthropic/claude-sonnet-4-6"
-    }
-  },
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "token": "YOUR_TELEGRAM_BOT_TOKEN"
-    }
-  },
-  "gateway": {
-    "port": 18790
-  }
-}
-```
-
-Start separate instances:
-
-```bash
-nanobot gateway --config ~/.nanobot-telegram/config.json
-nanobot gateway --config ~/.nanobot-discord/config.json
-```
-
-Override workspace for one-off runs when needed:
-
-```bash
-nanobot gateway --config ~/.nanobot-telegram/config.json --workspace /tmp/nanobot-telegram-test
-```
-
-### Common Use Cases
-
-- Run separate bots for Telegram, Discord, Feishu, and other platforms
-- Keep testing and production instances isolated
-- Use different models or providers for different teams
-- Serve multiple tenants with separate configs and runtime data
-
-### Notes
-
-- Each instance must use a different port if they run at the same time
-- Use a different workspace per instance if you want isolated memory, sessions, and skills
-- `--workspace` overrides the workspace defined in the config file
-- Cron jobs and runtime media/state are derived from the config directory
-
-## 💻 CLI Reference
-
-| Command | Description |
-|---------|-------------|
-| `pocketbot onboard` | Initialize config & workspace |
-| `pocketbot agent -m "..."` | Chat with the agent |
-| `pocketbot agent` | Interactive chat mode |
-| `pocketbot agent --no-markdown` | Show plain-text replies |
-| `pocketbot agent --logs` | Show runtime logs during chat |
-| `pocketbot web` | Start the web UI server |
-| `pocketbot gateway` | Start the gateway |
-| `pocketbot status` | Show status |
-| `pocketbot provider login openai-codex` | OAuth login for providers |
-| `pocketbot channels login` | Link WhatsApp (scan QR) |
-| `pocketbot channels status` | Show channel status |
-
-Interactive mode exits: `exit`, `quit`, `/exit`, `/quit`, `:q`, or `Ctrl+D`.
-
-<details>
-<summary><b>Heartbeat (Periodic Tasks)</b></summary>
-
-```bash
-# Add a job
-pocketbot cron add --name "daily" --message "Good morning!" --cron "0 9 * * *"
-pocketbot cron add --name "hourly" --message "Check status" --every 3600
-
-# List jobs
-pocketbot cron list
-
-# Remove a job
-pocketbot cron remove <job_id>
-```
-
-The agent can also manage this file itself — ask it to "add a periodic task" and it will update `HEARTBEAT.md` for you.
-
-> **Note:** The gateway must be running (`nanobot gateway`) and you must have chatted with the bot at least once so it knows which channel to deliver to.
-
-</details>
-
-## 🐳 Docker
-
-> [!TIP]
-> The `-v ~/.pocketbot:/root/.pocketbot` flag mounts your local config directory into the container, so your config and workspace persist across container restarts.
-
-### Docker Compose
-
-```bash
-docker compose run --rm nanobot-cli onboard   # first-time setup
-vim ~/.pocketbot/config.json                  # add API keys
-docker compose up -d nanobot-gateway          # start gateway
-```
-
-```bash
-docker compose run --rm nanobot-cli agent -m "Hello!"   # run CLI
-docker compose logs -f nanobot-gateway                   # view logs
-docker compose down                                      # stop
-```
-
-### Docker
-
-Build and run pocketbot in a container:
-
-```bash
-# Build the image
-docker build -t pocketbot .
-
-# Initialize config (first time only)
-docker run -v ~/.pocketbot:/root/.pocketbot --rm pocketbot onboard
-
-# Edit config on host to add API keys
-vim ~/.pocketbot/config.json
-
-# Run gateway (connects to enabled channels, e.g. Telegram/Discord/Mochat)
-docker run -v ~/.pocketbot:/root/.pocketbot -p 18790:18790 pocketbot gateway
-
-# Or run a single command
-docker run -v ~/.pocketbot:/root/.pocketbot --rm pocketbot agent -m "Hello!"
-docker run -v ~/.pocketbot:/root/.pocketbot --rm pocketbot status
-```
-
-## 🐧 Linux Service
-
-Run the gateway as a systemd user service so it starts automatically and restarts on failure.
-
-**1. Find the nanobot binary path:**
-
-```bash
-which nanobot   # e.g. /home/user/.local/bin/nanobot
-```
-
-**2. Create the service file** at `~/.config/systemd/user/nanobot-gateway.service` (replace `ExecStart` path if needed):
-
-```ini
-[Unit]
-Description=Nanobot Gateway
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=%h/.local/bin/nanobot gateway
-Restart=always
-RestartSec=10
-NoNewPrivileges=yes
-ProtectSystem=strict
-ReadWritePaths=%h
-
-[Install]
-WantedBy=default.target
-```
-
-**3. Enable and start:**
-
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now nanobot-gateway
-```
-
-**Common operations:**
-
-```bash
-systemctl --user status nanobot-gateway        # check status
-systemctl --user restart nanobot-gateway       # restart after config changes
-journalctl --user -u nanobot-gateway -f        # follow logs
-```
-
-If you edit the `.service` file itself, run `systemctl --user daemon-reload` before restarting.
-
-> **Note:** User services only run while you are logged in. To keep the gateway running after logout, enable lingering:
->
-> ```bash
-> loginctl enable-linger $USER
-> ```
-
-## 📁 Project Structure
-
-> **Note**: The internal package structure remains `nanobot/` to maintain compatibility with the original project and make upstream syncing easier.
-
-```
-nanobot/
-├── agent/          # 🧠 Core agent logic
-│   ├── loop.py     #    Agent loop (LLM ↔ tool execution)
-│   ├── context.py  #    Prompt builder
-│   ├── memory.py   #    Persistent memory
-│   ├── skills.py   #    Skills loader
-│   ├── subagent.py #    Background task execution
-│   └── tools/      #    Built-in tools (incl. spawn)
-├── skills/         # 🎯 Bundled skills (github, weather, tmux...)
-├── channels/       # 📱 Chat channel integrations
-├── web/            # 🌐 Web UI server and static files
-├── bus/            # 🚌 Message routing
-├── cron/           # ⏰ Scheduled tasks
-├── heartbeat/      # 💓 Proactive wake-up
-├── providers/      # 🤖 LLM providers (OpenRouter, etc.)
-├── session/        # 💬 Conversation sessions
-├── config/         # ⚙️ Configuration
-└── cli/            # 🖥️ Commands
-```
+> Working on the WebUI itself? Check out [`webui/README.md`](./webui/README.md) for the source-tree, Vite dev server, build, and test workflow.
+
+## 🏗️ Architecture
+
+<p align="center">
+  <img src="images/nanobot_arch.png" alt="nanobot architecture" width="800">
+</p>
+
+🐈 nanobot stays lightweight by centering everything around a small agent loop: messages come in from chat apps, the LLM decides when tools are needed, and memory or skills are pulled in only as context instead of becoming a heavy orchestration layer. That keeps the core path readable and easy to extend, while still letting you add channels, tools, memory, and deployment options without turning the system into a monolith.
+
+## ✨ Features
+
+<table align="center">
+  <tr align="center">
+    <th><p align="center">📈 24/7 Real-Time Market Analysis</p></th>
+    <th><p align="center">🚀 Full-Stack Software Engineer</p></th>
+    <th><p align="center">📅 Smart Daily Routine Manager</p></th>
+    <th><p align="center">📚 Personal Knowledge Assistant</p></th>
+  </tr>
+  <tr>
+    <td align="center"><p align="center"><img src="case/search.gif" width="180" height="400"></p></td>
+    <td align="center"><p align="center"><img src="case/code.gif" width="180" height="400"></p></td>
+    <td align="center"><p align="center"><img src="case/schedule.gif" width="180" height="400"></p></td>
+    <td align="center"><p align="center"><img src="case/memory.gif" width="180" height="400"></p></td>
+  </tr>
+  <tr>
+    <td align="center">Discovery • Insights • Trends</td>
+    <td align="center">Develop • Deploy • Scale</td>
+    <td align="center">Schedule • Automate • Organize</td>
+    <td align="center">Learn • Memory • Reasoning</td>
+  </tr>
+</table>
+
+## 📚 Docs
+
+Browse the [repo docs](./docs/README.md) for the latest features and GitHub development version, or visit [nanobot.wiki](https://nanobot.wiki/docs/latest/getting-started/nanobot-overview) for the stable release documentation.
+
+- Use task-oriented guides: [Guides](./docs/guides/README.md)
+- Start with no technical background: [Start Without Technical Background](./docs/start-without-technical-background.md)
+- Start from zero with developer basics: [Install and Quick Start](./docs/quick-start.md)
+- Understand the runtime model: [Concepts](./docs/concepts.md)
+- Read the source-level map: [Architecture](./docs/architecture.md)
+- Choose a provider/model: [Providers and Models](./docs/providers.md)
+- Copy provider setup recipes: [Provider Cookbook](./docs/provider-cookbook.md)
+- Debug setup and runtime failures: [Troubleshooting](./docs/troubleshooting.md)
+- Talk to your nanobot with familiar chat apps: [Chat App AI Agent](./docs/guides/chat-app-ai-agent.md) · [Chat Apps](./docs/chat-apps.md)
+- Schedule or trigger agent work: [Automations](./docs/automations.md)
+- Configure providers, web search, MCP, and runtime behavior: [Configuration](./docs/configuration.md)
+- Integrate nanobot with local tools and automations: [OpenAI-Compatible API](./docs/openai-api.md) · [Python SDK](./docs/python-sdk.md)
+- Run nanobot with Docker or as a Linux service: [Deployment](./docs/deployment.md)
 
 ## 🤝 Contribute & Roadmap
 
 PRs welcome! The codebase is intentionally small and readable. 🤗
 
-**Roadmap** — Pick an item and [open a PR](https://github.com/jojo-swe/nanobot/pulls)!
+### Contribution Flow
 
-- [ ] **Multi-modal** — See and hear (images, voice, video)
-- [ ] **Long-term memory** — Never forget important context
-- [ ] **Better reasoning** — Multi-step planning and reflection
-- [ ] **More integrations** — Calendar and more
-- [ ] **Self-improvement** — Learn from feedback and mistakes
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, review, and contribution guidelines.
+
+**Roadmap** — Pick an item and [open a PR](https://github.com/HKUDS/nanobot/pulls)!
+
+- **Multi-modal** — See and hear (images, voice, video)
+- **Long-term memory** — Never forget important context
+- **Better reasoning** — Multi-step planning and reflection
+- **More integrations** — Calendar and more
+- **Self-improvement** — Learn from feedback and mistakes
+
+## Contact
+
+This project was started by [Xubin Ren](https://github.com/re-bin) as a personal open-source project and continues to be maintained in an individual capacity using personal resources, with contributions from the open-source community. Feel free to contact [xubinrencs@gmail.com](mailto:xubinrencs@gmail.com) for questions, ideas, or collaboration.
 
 ### Contributors
 
-<a href="https://github.com/jojo-swe/nanobot/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=jojo-swe/nanobot&max=100&columns=12" alt="Contributors" />
+<a href="https://github.com/HKUDS/nanobot/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=HKUDS/nanobot&max=100&columns=12&updated=20260210" alt="Contributors" />
 </a>
 
 
 ## ⭐ Star History
 
 <div align="center">
-  <a href="https://star-history.com/#jojo-swe/nanobot&Date">
+  <a href="https://star-history.com/#HKUDS/nanobot&Date">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=jojo-swe/nanobot&type=Date&theme=dark" />
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=jojo-swe/nanobot&type=Date" />
-      <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=jojo-swe/nanobot&type=Date" style="border-radius: 15px; box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=HKUDS/nanobot&type=Date&theme=dark" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=HKUDS/nanobot&type=Date" />
+      <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=HKUDS/nanobot&type=Date" style="border-radius: 15px; box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);" />
     </picture>
   </a>
 </div>
 
 <p align="center">
-  <em> Thanks for visiting ✨ pocketbot!</em><br><br>
-  <img src="https://visitor-badge.laobi.icu/badge?page_id=jojo-swe.nanobot&style=for-the-badge&color=00d4ff" alt="Views">
-</p>
-
-
-<p align="center">
-  <sub>pocketbot is for educational, research, and technical exchange purposes only</sub>
+  <em> Thanks for visiting ✨ nanobot!</em><br><br>
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=HKUDS.nanobot&style=for-the-badge&color=00d4ff" alt="Views">
 </p>

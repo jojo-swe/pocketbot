@@ -1,236 +1,135 @@
 # Contributing to nanobot
 
-Thank you for your interest in contributing to this fork of nanobot! This document provides guidelines for contributing to the jojo-swe/nanobot fork.
+Thank you for being here.
 
-## Getting Started
+nanobot is built with a simple belief: good tools should feel calm, clear, and humane.
+We care deeply about useful features, but we also believe in achieving more with less:
+solutions should be powerful without becoming heavy, and ambitious without becoming
+needlessly complicated.
 
-### Prerequisites
+This guide is not only about how to open a PR. It is also about how we hope to build
+software together: with care, clarity, and respect for the next person reading the code.
 
-- Python 3.11 or higher
-- Git
-- A GitHub account
+## Maintainers
 
-### Development Setup
+Maintainers are community stewards who help review, organize, and maintain the project. The list below describes each maintainer's current open-source project responsibilities.
 
-1. **Fork the repository**
-   ```bash
-   # Fork this repository on GitHub, then clone your fork
-   git clone https://github.com/YOUR_USERNAME/nanobot.git
-   cd nanobot
-   ```
+| Maintainer | Role |
+|------------|------|
+| [@re-bin](https://github.com/re-bin) | Project lead; reviews community PRs and handles merges |
+| [@chengyongru](https://github.com/chengyongru) | Reviews community PRs and may approve them; merges are handled by the project lead |
 
-2. **Set up development environment**
-   ```bash
-   # Install in development mode
-   pip install -e .
-   
-   # Install development dependencies
-   pip install -e ".[dev]"
-   ```
+## Contribution Flow
 
-3. **Configure your API keys**
-   ```bash
-   # Initialize configuration
-   nanobot onboard
-   
-   # Edit ~/.nanobot/config.json to add your API keys
-   ```
+### What Should I Open a PR For?
 
-4. **Verify installation**
-   ```bash
-   nanobot status
-   ```
+PRs are welcome for:
 
-## Development Workflow
+- New features or functionality
+- Bug fixes with no behavior changes
+- Documentation improvements
+- Minor tweaks that don't affect functionality
+- Refactoring that is clearly scoped and easy to review
+- Changes to APIs or configuration, when the impact is documented
 
-### 1. Create a Branch
+For riskier or larger changes, please open an issue or draft PR early so the
+shape of the work can be discussed before the implementation grows too large.
+
+### Starting Work
+
+Before making changes, sync your local checkout and create a topic branch.
 
 ```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/your-bug-fix
+git fetch upstream
+git switch main
+git pull --ff-only upstream main
+git switch -c your-topic-branch
 ```
 
-### 2. Make Changes
+Use your primary HKUDS/nanobot remote in place of `upstream` if your checkout
+uses a different remote name.
 
-- Follow the existing code style
-- Add tests for new functionality
-- Update documentation as needed
-- Keep changes focused and minimal
+Keep unrelated local changes out of the topic branch. If your checkout already has
+work in progress, use a separate worktree or finish that work before starting a
+new branch.
 
-### 3. Test Your Changes
+## Development Setup
+
+Keep setup boring and reliable. The goal is to get you into the code quickly:
 
 ```bash
-# Run linting
-ruff check nanobot/
+# Clone the repository
+git clone https://github.com/HKUDS/nanobot.git
+cd nanobot
 
-# Run tests (if available)
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
 pytest
 
-# Test the CLI manually
-nanobot agent -m "Hello, test!"
+# Lint code
+ruff check nanobot/
+
+# Format code — optional. The existing tree predates `ruff format`,
+# so running it broadly produces large unrelated diffs.
+# Do not mix mechanical formatting churn into a functional PR.
+# Use formatting only for the exact code your change intentionally touches.
+ruff format <files-you-changed>
 ```
 
-### 4. Submit a Pull Request
+## Contribution License
 
-1. Push your branch to your fork
-2. Open a pull request against this repository
-3. Provide a clear description of your changes
-4. Link any relevant issues
+By submitting a contribution, you confirm that you have the right to submit it
+and agree that it will be licensed under the project's MIT License.
 
 ## Code Style
 
-We use [ruff](https://github.com/astral-sh/ruff) for linting and formatting:
+We care about more than passing lint. We want nanobot to stay small, calm, and readable.
 
-```bash
-# Check for issues
-ruff check nanobot/
+When contributing, please aim for code that feels:
 
-# Auto-fix formatting
-ruff format nanobot/
-```
+- Simple: prefer the smallest change that solves the real problem
+- Clear: optimize for the next reader, not for cleverness
+- Decoupled: keep boundaries clean and avoid unnecessary new abstractions
+- Honest: do not hide complexity, but do not create extra complexity either
+- Durable: choose solutions that are easy to maintain, test, and extend
 
-### Guidelines
+In practice:
 
-- Use Python 3.11+ features
-- Follow PEP 8 style guidelines
-- Keep functions and classes small and focused
-- Add type hints where appropriate
-- Write clear, descriptive commit messages
+- Line length: 100 characters (`ruff`)
+- Target: Python 3.11+
+- Linting: `ruff` with rules E, F, I, N, W (E501 ignored)
+- Async: uses `asyncio` throughout; pytest with `asyncio_mode = "auto"`
+- Prefer readable code over magical code
+- Prefer focused patches over broad rewrites
+- Do not mix mechanical formatting, line wrapping, import sorting, or quote churn
+  into a feature or bugfix PR. If formatting cleanup is needed, make it a
+  separate formatting-only PR.
+- If a new abstraction is introduced, it should clearly reduce complexity rather than move it around
 
-## Areas for Contribution
+## Modifying CI Workflows
 
-### High Priority
+If your PR touches `.github/workflows/`, please keep the CI within
+GitHub Actions' free tier:
 
-- **Web UI improvements**
-  - Enhanced UI/UX features
-  - Additional themes or styling
-  - Mobile responsiveness improvements
-  - Real-time collaboration features
+- Use only standard GitHub-hosted runners (`ubuntu-latest`, `windows-latest`)
+- Avoid macOS runners, larger runners (`*-cores`, `*-xlarge`, `*-gpu`),
+  and self-hosted runners
+- Avoid uploading large artifacts or using long retention
+- Avoid paid Marketplace actions
 
-- **Documentation**
-  - Improve existing documentation
-  - Add more examples and tutorials
-  - Fix typos and clarify unclear sections
+If your change genuinely needs to step outside this, please call it out
+explicitly in the PR description so it can be discussed before merge.
 
-- **Bug Fixes**
-  - Fix reported issues
-  - Improve error handling
-  - Enhance stability
+## Questions?
 
-### Medium Priority
+If you have questions, ideas, or half-formed insights, you are warmly welcome here.
 
-- **New Chat Integrations**
-  - Additional chat platforms
-  - Improved existing integrations
-  - Unified chat interface
+Please feel free to open an [issue](https://github.com/HKUDS/nanobot/issues), join the community, or simply reach out:
 
-- **Performance**
-  - Optimize startup time
-  - Reduce memory usage
-  - Improve response times
+- [Discord](https://discord.gg/MnCvHqpUGB)
+- [Feishu/WeChat](./COMMUNICATION.md)
+- Email: Xubin Ren (@Re-bin) — <xubinrencs@gmail.com>
 
-- **Features**
-  - New agent tools
-  - Enhanced memory system
-  - Better configuration management
-
-### Low Priority
-
-- **Experimental Features**
-  - Multi-modal support (images, voice)
-  - Advanced reasoning capabilities
-  - Plugin system
-
-## Fork-Specific Considerations
-
-### Maintaining Compatibility
-
-This fork aims to maintain compatibility with the original HKUDS/nanobot project. When contributing:
-
-1. **Preserve core functionality** - Don't break existing features
-2. **Fork-specific features** - Clearly mark any fork-only additions
-3. **Upstream sync awareness** - Be mindful of future upstream changes
-4. **Documentation** - Update fork-specific documentation
-
-### Version Strategy
-
-This fork uses `{original_version}+jojo` versioning. When making changes:
-
-- Bug fixes: Increment patch version
-- New features: Increment minor version
-- Breaking changes: Increment major version
-
-## Testing
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_agent.py
-
-# Run with coverage
-pytest --cov=nanobot
-```
-
-### Writing Tests
-
-- Add tests for new functionality
-- Test edge cases and error conditions
-- Use descriptive test names
-- Mock external dependencies
-
-## Documentation
-
-### Updating Documentation
-
-- README.md: Main project documentation
-- FORK.md: Fork-specific information
-- CHANGELOG.md: Version history
-- Inline code comments: Complex logic explanations
-
-### Documentation Style
-
-- Use clear, concise language
-- Include code examples
-- Add screenshots for UI features
-- Keep documentation up-to-date
-
-## Release Process
-
-This fork follows semantic versioning. Releases are made when:
-
-- Significant new features are added
-- Important bugs are fixed
-- Security vulnerabilities are patched
-
-## Community
-
-### Getting Help
-
-- **GitHub Issues**: Report bugs and request features
-- **GitHub Discussions**: General questions and ideas
-- **FORK.md**: Detailed fork information
-
-### Code of Conduct
-
-Be respectful and constructive in all interactions:
-- Welcome newcomers
-- Provide helpful feedback
-- Focus on what's best for the community
-- Show empathy toward other community members
-
-## Acknowledgments
-
-Thank you to:
-
-- The original HKUDS/nanobot contributors
-- Everyone who contributes to this fork
-- The broader AI agent community
-
-## License
-
-By contributing to this project, you agree that your contributions will be licensed under the same MIT license as the original project.
+Thank you for spending your time and care on nanobot. We would love for more people to participate in this community, and we genuinely welcome contributions of all sizes.
