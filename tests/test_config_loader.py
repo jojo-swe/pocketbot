@@ -9,7 +9,6 @@ import pytest
 from nanobot.config.loader import load_config, save_config
 from nanobot.config.schema import Config
 
-
 # ---------------------------------------------------------------------------
 # load_config
 # ---------------------------------------------------------------------------
@@ -35,11 +34,13 @@ class TestLoadConfig:
         assert cfg.agents.defaults.model == "openai/gpt-4o"
         assert cfg.agents.defaults.max_tokens == 1234
 
-    def test_load_returns_default_on_invalid_json(self, tmp_path):
+    def test_load_rejects_invalid_json(self, tmp_path):
+        from nanobot.config.errors import ConfigLoadError
+
         path = tmp_path / "config.json"
         path.write_text("{ not valid json }")
-        cfg = load_config(path)
-        assert isinstance(cfg, Config)
+        with pytest.raises(ConfigLoadError):
+            load_config(path)
 
     def test_load_handles_partial_config(self, tmp_path):
         path = tmp_path / "config.json"

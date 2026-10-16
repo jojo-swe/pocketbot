@@ -12,7 +12,6 @@ from nanobot.bus.queue import MessageBus
 from nanobot.config.schema import Config, WebAuthConfig, WebConfig
 from nanobot.web.server import create_app
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
@@ -422,11 +421,10 @@ class TestPush:
         # Fresh client — use a separate one to avoid state bleed
         bus = MessageBus()
         app = create_app(bus, config=_make_config())
-        from fastapi.testclient import TestClient as TC
-        c = TC(app)
-        c.post("/api/push/register", json={"token": "ExponentPushToken[a1]"})
-        c.post("/api/push/register", json={"token": "ExponentPushToken[a2]"})
-        r = c.get("/api/push/tokens")
+        client = TestClient(app)
+        client.post("/api/push/register", json={"token": "ExponentPushToken[a1]"})
+        client.post("/api/push/register", json={"token": "ExponentPushToken[a2]"})
+        r = client.get("/api/push/tokens")
         assert r.status_code == 200
         assert r.json()["count"] == 2
 
@@ -434,11 +432,10 @@ class TestPush:
         tok = "ExponentPushToken[dup1]"
         bus = MessageBus()
         app = create_app(bus, config=_make_config())
-        from fastapi.testclient import TestClient as TC
-        c = TC(app)
-        c.post("/api/push/register", json={"token": tok})
-        c.post("/api/push/register", json={"token": tok})
-        r = c.get("/api/push/tokens")
+        client = TestClient(app)
+        client.post("/api/push/register", json={"token": tok})
+        client.post("/api/push/register", json={"token": tok})
+        r = client.get("/api/push/tokens")
         assert r.json()["count"] == 1  # set deduplicates
 
 

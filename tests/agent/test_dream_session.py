@@ -1,8 +1,10 @@
 """Tests for Dream session key generation and rotation."""
+
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from nanobot.agent.memory import MemoryStore
+from nanobot.session.manager import SessionManager
 
 
 class TestDreamSessionKey:
@@ -23,52 +25,39 @@ class TestDreamSessionKey:
 
 
 class TestPruneDreamSessions:
-    def test_keeps_n_most_recent(self, tmp_path):
-        import os
-        import time
+    async def test_keeps_n_most_recent(self, tmp_path):
+        manager = SessionManager(tmp_path / "workspace", sessions_root=tmp_path / "runtime")
+        keys = [f"dream:20260528-{100000 + i:06d}" for i in range(15)]
+        for i, key in enumerate(keys):
+            session = manager.get_or_create(key)
+            session.updated_at = datetime(2026, 5, 28, 10, 0, i)
+            manager.save(session)
+        manager.save(manager.get_or_create("telegram:normal"))
 
-        sessions_dir = tmp_path / "sessions"
-        sessions_dir.mkdir()
+        assert await manager.state.prune_dream_sessions(keep=10) == 5
+        await manager.state.aclose()
 
-        base_time = time.time() - 100
+        assert [manager.read_session_snapshot(key) is not None for key in keys] == [False] * 5 + [True] * 10
+        assert manager.read_session_snapshot("telegram:normal") is not None
 
-        for i in range(15):
-            key = f"dream:20260528-{100000 + i:06d}"
-            safe_key = key.replace(":", "_")
-            path = sessions_dir / f"{safe_key}.jsonl"
-            path.write_text(
-                f'{{"_type": "metadata", "key": "{key}", '
-                f'"created_at": "2026-05-28T10:00:{i:02d}", '
-                f'"updated_at": "2026-05-28T10:00:{i:02d}"}}\n',
-                encoding="utf-8",
-            )
-            os.utime(path, (base_time + i, base_time + i))
+    async def test_leaves_legacy_backup_untouched(self, tmp_path):
+        manager = SessionManager(tmp_path / "workspace", sessions_root=tmp_path / "runtime")
+        path = manager.sessions_dir / "dream_20260713-095959.jsonl"
+        path.write_text('legacy backup', encoding="utf-8")
+        await manager.state.prune_dream_sessions(keep=0)
+        await manager.state.aclose()
+        assert path.read_text(encoding="utf-8") == 'legacy backup'
 
-        normal_path = sessions_dir / "telegram_123.jsonl"
-        normal_path.write_text('{"_type": "metadata"}\n', encoding="utf-8")
-
-        MemoryStore.prune_dream_sessions(sessions_dir, keep=10)
-
-        dream_files = sorted(sessions_dir.glob("dream_*.jsonl"))
-        assert len(dream_files) == 10
-        remaining_keys = [f.stem for f in dream_files]
-        assert "dream_20260528-100000" not in remaining_keys
-        assert "dream_20260528-100014" in remaining_keys
-        assert normal_path.exists()
-
-    def test_noop_when_under_limit(self, tmp_path):
-        sessions_dir = tmp_path / "sessions"
-        sessions_dir.mkdir()
+    async def test_noop_when_under_limit(self, tmp_path):
+        manager = SessionManager(tmp_path / "workspace", sessions_root=tmp_path / "runtime")
         for i in range(3):
-            key = f"dream:20260528-{100000 + i:06d}"
-            safe_key = key.replace(":", "_")
-            (sessions_dir / f"{safe_key}.jsonl").write_text("{}", encoding="utf-8")
+            manager.save(manager.get_or_create(f"dream:20260528-{100000 + i:06d}"))
+        assert await manager.state.prune_dream_sessions(keep=10) == 0
+        await manager.state.aclose()
+        assert len(manager.list_sessions()) == 3
 
-        MemoryStore.prune_dream_sessions(sessions_dir, keep=10)
-        assert len(list(sessions_dir.glob("dream_*.jsonl"))) == 3
-
-    def test_empty_dir_noop(self, tmp_path):
-        sessions_dir = tmp_path / "sessions"
-        sessions_dir.mkdir()
-        MemoryStore.prune_dream_sessions(sessions_dir, keep=10)
-        assert list(sessions_dir.iterdir()) == []
+    async def test_empty_store_noop(self, tmp_path):
+        manager = SessionManager(tmp_path / "workspace", sessions_root=tmp_path / "runtime")
+        assert await manager.state.prune_dream_sessions(keep=10) == 0
+        await manager.state.aclose()
+        assert manager.list_sessions() == []

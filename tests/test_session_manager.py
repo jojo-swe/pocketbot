@@ -6,7 +6,6 @@ import pytest
 
 from nanobot.session.manager import Session, SessionManager
 
-
 # ---------------------------------------------------------------------------
 # Session unit tests
 # ---------------------------------------------------------------------------
@@ -56,10 +55,17 @@ class TestSession:
 
     def test_get_history_preserves_tool_call_id(self):
         s = Session(key="k")
+        s.add_message("user", "search please")
+        s.add_message(
+            "assistant",
+            "",
+            tool_calls=[{"id": "tc1", "function": {"name": "search"}}],
+        )
         s.add_message("tool", "result", tool_call_id="tc1", name="search")
         history = s.get_history()
-        assert history[0]["tool_call_id"] == "tc1"
-        assert history[0]["name"] == "search"
+        tool = next(message for message in history if message["role"] == "tool")
+        assert tool["tool_call_id"] == "tc1"
+        assert tool["name"] == "search"
 
     def test_clear_resets_messages(self):
         s = Session(key="k")
@@ -113,17 +119,20 @@ class TestSessionManager:
         assert s.key == "telegram:123"
         assert s.messages == []
 
-    def test_get_or_create_same_key_returns_same(self, manager):
+    def test_get_or_create_reloads_saved_session(self, manager):
         s1 = manager.get_or_create("web:abc")
         s1.add_message("user", "hi")
+        manager.save(s1)
         s2 = manager.get_or_create("web:abc")
-        assert s2 is s1
+        assert s2 is not s1
         assert len(s2.messages) == 1
+        assert s2.messages[0]["content"] == "hi"
 
-    def test_sessions_dir_created_in_workspace(self, workspace):
+    def test_sessions_dir_is_outside_workspace(self, workspace):
         m = SessionManager(workspace)
         assert m.sessions_dir.exists()
-        assert m.sessions_dir.parent == workspace
+        assert m.sessions_dir != workspace
+        assert workspace not in m.sessions_dir.parents
 
     def test_save_and_reload(self, workspace):
         m1 = SessionManager(workspace)
@@ -156,33 +165,29 @@ class TestSessionManager:
     def test_session_file_path_safe_chars(self, workspace):
         m = SessionManager(workspace)
         s = m.get_or_create("telegram:12345")
+        s.add_message("user", "hi")
         m.save(s)
-        files = list(m.sessions_dir.glob("*.jsonl"))
-        assert len(files) == 1
+        assert (m.sessions_dir / "sessions.sqlite3").is_file()
 
-    def test_legacy_migration_from_nanobot_dir(self, workspace, tmp_path):
-        """Sessions in ~/.nanobot/sessions should be migrated on first access."""
+    def test_legacy_jsonl_migration_from_workspace(self, workspace):
+        """JSONL sessions under the workspace are imported into SQLite."""
         import json
-        from nanobot.utils.helpers import safe_filename
 
-        legacy_dir = tmp_path / ".nanobot" / "sessions"
-        legacy_dir.mkdir(parents=True)
+        legacy_dir = workspace / "sessions"
+        legacy_dir.mkdir()
         key = "web:migrate"
-        safe_key = safe_filename(key.replace(":", "_"))
-        legacy_file = legacy_dir / f"{safe_key}.jsonl"
-        # Write a valid JSONL session (metadata + message)
-        metadata = {"_type": "metadata", "created_at": "2024-01-01T00:00:00"}
+        legacy_file = legacy_dir / "web_migrate.jsonl"
+        metadata = {
+            "_type": "metadata",
+            "key": key,
+            "created_at": "2024-01-01T00:00:00",
+            "updated_at": "2024-01-01T00:00:00",
+        }
         msg = {"role": "user", "content": "legacy msg", "timestamp": "2024-01-01T00:00:00"}
-        legacy_file.write_text(
-            json.dumps(metadata) + "\n" + json.dumps(msg) + "\n"
-        )
+        legacy_file.write_text(json.dumps(metadata) + "\n" + json.dumps(msg) + "\n")
 
         m = SessionManager(workspace)
-        m.legacy_sessions_dir = legacy_dir  # redirect to tmp
-
         s = m.get_or_create(key)
-        # Migration moves the file — session should have the message
-        assert s is not None
         assert len(s.messages) == 1
         assert s.messages[0]["content"] == "legacy msg"
 

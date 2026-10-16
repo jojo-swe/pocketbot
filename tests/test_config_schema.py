@@ -11,7 +11,6 @@ from nanobot.config.schema import (
     WebConfig,
 )
 
-
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
@@ -48,7 +47,7 @@ class TestDefaults:
 
     def test_gateway_defaults(self):
         g = GatewayConfig()
-        assert g.host == "0.0.0.0"
+        assert g.host == "127.0.0.1"
         assert g.port == 18790
 
     def test_web_config_defaults(self):
@@ -106,7 +105,7 @@ class TestProviders:
 
     def test_provider_config_defaults(self):
         p = ProviderConfig()
-        assert p.api_key == ""
+        assert p.api_key in (None, "")
         assert p.api_base is None
         assert p.extra_headers is None
 

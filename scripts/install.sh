@@ -1,8 +1,7 @@
 #!/bin/sh
 set -eu
 
-package="nanobot-ai"
-main_source="https://github.com/HKUDS/nanobot/archive/refs/heads/main.zip"
+package="pocketbot-ai"
 install_target="$package"
 install_source="PyPI"
 dry_run="0"
@@ -23,8 +22,8 @@ install_failure_hint() {
   printf '%s\n' "If pip mentioned externally-managed-environment, use uv, pipx, or a virtual environment instead of system pip." >&2
   printf '%s\n' "You can also run manually:" >&2
   printf '  %s\n' "uv tool install --force --upgrade $install_target" >&2
-  printf '  %s\n' "$python_bin -m venv ~/.nanobot/venv" >&2
-  printf '  %s\n' "~/.nanobot/venv/bin/python -m pip install --upgrade $install_target" >&2
+  printf '  %s\n' "$python_bin -m venv ~/.pocketbot/venv" >&2
+  printf '  %s\n' "~/.pocketbot/venv/bin/python -m pip install --upgrade $install_target" >&2
   printf '%s\n' "Then start setup with:" >&2
   printf '  %s\n' "nanobot onboard --wizard" >&2
   exit 1
@@ -32,11 +31,12 @@ install_failure_hint() {
 
 usage() {
   cat <<'EOF'
-Usage: install.sh [--dev] [--dry-run]
+Usage: install.sh [--dry-run]
 
-By default this installs or upgrades nanobot-ai from PyPI.
-Use --dev to install from the current main branch on GitHub.
-Use --dry-run to print what would happen without installing or starting the wizard.
+By default this installs or upgrades pocketbot-ai from PyPI.
+Use --dry-run to print what would happen without installing or starting setup.
+
+For current main, clone the repository and run `python -m pip install -e .`.
 EOF
 }
 
@@ -104,6 +104,30 @@ nanobot_try_command() {
   esac
 }
 
+is_fresh_nanobot_install() {
+  [ -n "${HOME:-}" ] || return 1
+  [ ! -e "$HOME/.pocketbot/config.json" ] && [ ! -e "$HOME/.nanobot/config.json" ]
+}
+
+has_browser_session() {
+  if [ -n "${SSH_CONNECTION:-}${SSH_TTY:-}" ]; then
+    return 1
+  fi
+  if ! : 2>/dev/null < /dev/tty; then
+    return 1
+  fi
+
+  case "$(uname -s)" in
+    Darwin)
+      command -v launchctl >/dev/null 2>&1 &&
+        launchctl print "gui/$(id -u)" >/dev/null 2>&1
+      ;;
+    *)
+      [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]
+      ;;
+  esac
+}
+
 install_with_active_python() {
   info "Detected an active virtual environment. Installing into it..."
   ensure_pip "$python_bin" || return 1
@@ -150,7 +174,7 @@ EOF
 install_with_managed_venv() {
   [ -n "${HOME:-}" ] || fail "HOME is not set; cannot create a managed virtual environment"
 
-  venv_dir="${NANOBOT_VENV:-$HOME/.nanobot/venv}"
+  venv_dir="${NANOBOT_VENV:-$HOME/.pocketbot/venv}"
   venv_python="$venv_dir/bin/python"
 
   if [ ! -x "$venv_python" ]; then
@@ -176,8 +200,7 @@ PY
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dev)
-      install_target="$main_source"
-      install_source="GitHub main"
+      fail "--dev installed an untracked main snapshot and is no longer supported; clone the repository and run 'python -m pip install -e .' instead"
       ;;
     --dry-run)
       dry_run="1"
@@ -219,13 +242,16 @@ if [ "$dry_run" = "1" ]; then
     info "Dry run: would run: pipx install --python $python_bin --force $install_target"
     info "Dry run: would run nanobot as: pipx run --spec $install_target nanobot"
   else
-    venv_dir="${NANOBOT_VENV:-$HOME/.nanobot/venv}"
+    venv_dir="${NANOBOT_VENV:-$HOME/.pocketbot/venv}"
     info "Dry run: would create or reuse a dedicated virtual environment: $venv_dir"
     info "Dry run: would run: $venv_dir/bin/python -m pip install --upgrade $install_target"
     info "Dry run: would run nanobot as: $venv_dir/bin/python -m nanobot"
   fi
   if [ "${NANOBOT_SKIP_WIZARD:-}" = "1" ]; then
-    info "Dry run: would skip setup wizard because NANOBOT_SKIP_WIZARD=1."
+    info "Dry run: would skip automatic setup because NANOBOT_SKIP_WIZARD=1."
+  elif is_fresh_nanobot_install && has_browser_session; then
+    info "Dry run: would start the WebUI for this fresh desktop install."
+    info "Dry run: would fall back to the setup wizard for older releases."
   else
     info "Dry run: would run the setup wizard."
   fi
@@ -264,9 +290,21 @@ info "Installed nanobot:"
 run_nanobot --version
 
 if [ "${NANOBOT_SKIP_WIZARD:-}" = "1" ]; then
-  info "Skipping setup wizard because NANOBOT_SKIP_WIZARD=1."
-  info "Run this later: $(nanobot_try_command) onboard --wizard"
+  info "Skipping automatic setup because NANOBOT_SKIP_WIZARD=1."
+  info "Run this later: $(nanobot_try_command) webui"
   exit 0
+fi
+
+if is_fresh_nanobot_install && has_browser_session; then
+  if run_nanobot webui --help >/dev/null 2>&1; then
+    info "Starting nanobot WebUI..."
+    info "Configure your first provider and model in Settings > Models."
+    info "Run this later: $(nanobot_try_command) webui"
+    run_nanobot webui --yes
+    exit 0
+  fi
+  info "The installed release does not support nanobot webui yet."
+  info "Falling back to the setup wizard..."
 fi
 
 if [ -t 0 ]; then

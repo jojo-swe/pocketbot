@@ -6,18 +6,52 @@ platform-specific binaries (all subprocess calls are mocked).
 """
 
 import asyncio
+import os
 import shutil
 import sys
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from nanobot.agent.tools.exec_session import ExecSessionManager, ExecSessionTool
 from nanobot.agent.tools.shell import ExecTool
 
 _WINDOWS_ENV_KEYS = {
     "APPDATA", "LOCALAPPDATA", "ProgramData",
     "ProgramFiles", "ProgramFiles(x86)", "ProgramW6432",
 }
+
+
+class _CompletedProcess:
+    """A finished subprocess with the stream/wait protocol used by the collector."""
+
+    def __init__(self, stdout: bytes, stderr: bytes = b"", returncode: int = 0) -> None:
+        self.pid = 12345
+        self.returncode = returncode
+        self.stdin = None
+        self.stdout = asyncio.StreamReader()
+        self.stderr = asyncio.StreamReader()
+        self.stdout.feed_data(stdout)
+        self.stdout.feed_eof()
+        self.stderr.feed_data(stderr)
+        self.stderr.feed_eof()
+
+    async def wait(self) -> int:
+        await asyncio.sleep(0)
+        return self.returncode
+
+
+class _FakeWindowsJob:
+    creation_flags = 0
+
+    def assign_and_resume(self, pid: int) -> None:
+        pass
+
+    def release(self) -> None:
+        pass
+
+    def terminate(self) -> None:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +124,29 @@ class TestBuildEnvWindows:
 
 
 # ---------------------------------------------------------------------------
+# argument-vector PATH
+# ---------------------------------------------------------------------------
+
+class TestArgumentVectorPath:
+
+    def test_uses_parent_path_for_executable_lookup(self):
+        parent_path = os.pathsep.join(("parent-bin", "system-bin"))
+        with (
+            patch("nanobot.agent.tools.shell._IS_WINDOWS", False),
+            patch.dict(
+                "os.environ",
+                {"PATH": parent_path, "NANOBOT_SECRET_TOKEN": "super-secret-value"},
+                clear=True,
+            ),
+        ):
+            prepared = ExecTool()._prepare_command(["rg", "--version"])
+
+        assert not isinstance(prepared, str)
+        assert prepared.env["PATH"] == parent_path
+        assert "NANOBOT_SECRET_TOKEN" not in prepared.env
+
+
+# ---------------------------------------------------------------------------
 # _spawn
 # ---------------------------------------------------------------------------
 
@@ -113,8 +170,50 @@ class TestSpawnUnix:
         kwargs = mock_exec.call_args[1]
         assert kwargs["stdin"] == asyncio.subprocess.DEVNULL
 
+    @pytest.mark.asyncio
+    async def test_process_tree_starts_new_session(self):
+        with (
+            patch("nanobot.agent.tools.shell._IS_WINDOWS", False),
+            patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+        ):
+            mock_exec.return_value = AsyncMock()
+            await ExecTool._spawn(
+                "echo hi",
+                "/tmp",
+                {"HOME": "/tmp"},
+                process_tree=True,
+            )
+
+        assert mock_exec.call_args.kwargs["start_new_session"] is True
+
 
 class TestSpawnWindows:
+
+    @pytest.mark.asyncio
+    async def test_job_assignment_failure_kills_suspended_process(self):
+        env = {"PATH": ""}
+        process = AsyncMock()
+        process.pid = 123
+        process.returncode = None
+        process.kill = MagicMock()
+        process.wait.return_value = -9
+        job = MagicMock(spec=_FakeWindowsJob)
+        job.creation_flags = 0x4
+        job.assign_and_resume.side_effect = OSError("OpenProcess failed")
+
+        with (
+            patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
+            patch("nanobot.agent.tools.shell.sys", MagicMock(platform="win32")),
+            patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+            patch.object(ExecTool, "_create_windows_job", return_value=job),
+            pytest.raises(OSError, match="OpenProcess failed"),
+        ):
+            mock_exec.return_value = process
+            await ExecTool._spawn("echo hi", r"C:\work", env, process_tree=True)
+
+        job.terminate.assert_called_once_with()
+        process.kill.assert_called_once_with()
+        process.wait.assert_awaited_once_with()
 
     @pytest.mark.asyncio
     async def test_single_line_uses_powershell(self):
@@ -213,6 +312,25 @@ class TestSpawnWindows:
         assert "if ($LASTEXITCODE -ne $null) { exit $LASTEXITCODE }" in command
 
     @pytest.mark.asyncio
+    async def test_powershell_configures_utf8_io(self):
+        """PowerShell should use UTF-8 for captured output, native input, and redirections."""
+        env = {"PATH": ""}
+        with (
+            patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
+            patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+        ):
+            mock_exec.return_value = AsyncMock()
+            await ExecTool._spawn("Write-Output 'café 你好'", r"C:\work", env)
+
+        command = mock_exec.call_args[0][-1]
+        assert "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)" in command
+        assert (
+            "if ($PSVersionTable.PSVersion.Major -lt 6) { "
+            "$OutputEncoding = [Console]::OutputEncoding }"
+        ) in command
+        assert "$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'" in command
+
+    @pytest.mark.asyncio
     async def test_powershell_invokes_quoted_windows_executable_path(self):
         """PowerShell needs & before quoted executable paths with arguments."""
         env = {"PATH": ""}
@@ -225,7 +343,22 @@ class TestSpawnWindows:
             await ExecTool._spawn(command, r"C:\work", env)
 
         powershell_command = mock_exec.call_args[0][-1]
-        assert powershell_command.startswith("& " + command)
+        assert f"\n& {command}\n" in powershell_command
+
+    @pytest.mark.asyncio
+    async def test_powershell_invokes_quoted_windows_executable_without_arguments(self):
+        """A quoted executable path is still a command when it has no arguments."""
+        env = {"PATH": ""}
+        command = r'"D:\Program Files\Git\cmd\git.exe"'
+        with (
+            patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
+            patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+        ):
+            mock_exec.return_value = AsyncMock()
+            await ExecTool._spawn(command, r"C:\work", env)
+
+        powershell_command = mock_exec.call_args[0][-1]
+        assert f"\n& {command}\n" in powershell_command
 
     @pytest.mark.asyncio
     async def test_prefers_pwsh_when_available(self):
@@ -259,14 +392,14 @@ class TestPathAppendPlatform:
     @pytest.mark.asyncio
     async def test_unix_uses_env_var_in_fixed_export(self):
         """On Unix, path_append must not be interpolated into shell source."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"ok", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"ok")
 
         captured_cmd = None
         captured_env = {}
 
-        async def capture_spawn(cmd, cwd, env, shell_program=None, login=True):
+        async def capture_spawn(
+            cmd, cwd, env, shell_program=None, login=True, *, stdin=None, process_tree=False,
+        ):
             nonlocal captured_cmd
             captured_cmd = cmd
             captured_env.update(env)
@@ -288,14 +421,14 @@ class TestPathAppendPlatform:
     @pytest.mark.asyncio
     async def test_unix_path_prepend_uses_env_var_in_fixed_export(self):
         """On Unix, path_prepend must not be interpolated into shell source."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"ok", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"ok")
 
         captured_cmd = None
         captured_env = {}
 
-        async def capture_spawn(cmd, cwd, env, shell_program=None, login=True, *, stdin=None):
+        async def capture_spawn(
+            cmd, cwd, env, shell_program=None, login=True, *, stdin=None, process_tree=False,
+        ):
             nonlocal captured_cmd
             captured_cmd = cmd
             captured_env.update(env)
@@ -316,14 +449,14 @@ class TestPathAppendPlatform:
 
     @pytest.mark.asyncio
     async def test_unix_path_prepend_and_append_order(self):
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"ok", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"ok")
 
         captured_cmd = None
         captured_env = {}
 
-        async def capture_spawn(cmd, cwd, env, shell_program=None, login=True, *, stdin=None):
+        async def capture_spawn(
+            cmd, cwd, env, shell_program=None, login=True, *, stdin=None, process_tree=False,
+        ):
             nonlocal captured_cmd
             captured_cmd = cmd
             captured_env.update(env)
@@ -347,13 +480,13 @@ class TestPathAppendPlatform:
     @pytest.mark.asyncio
     async def test_windows_modifies_env(self):
         """On Windows, path_append is appended to PATH in the env dict."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"ok", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"ok")
 
         captured_env = {}
 
-        async def capture_spawn(cmd, cwd, env, shell_program=None, login=True):
+        async def capture_spawn(
+            cmd, cwd, env, shell_program=None, login=True, *, stdin=None, process_tree=False,
+        ):
             captured_env.update(env)
             return mock_proc
 
@@ -370,13 +503,13 @@ class TestPathAppendPlatform:
 
     @pytest.mark.asyncio
     async def test_windows_path_prepend_and_append_order(self):
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"ok", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"ok")
 
         captured_env = {}
 
-        async def capture_spawn(cmd, cwd, env, shell_program=None, login=True, *, stdin=None):
+        async def capture_spawn(
+            cmd, cwd, env, shell_program=None, login=True, *, stdin=None, process_tree=False,
+        ):
             captured_env.update(env)
             return mock_proc
 
@@ -402,43 +535,71 @@ class TestPathAppendPlatform:
 class TestSandboxPlatform:
 
     @pytest.mark.asyncio
-    async def test_bwrap_skipped_on_windows(self):
-        """bwrap must be silently skipped on Windows, not crash."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"ok", b"")
-        mock_proc.returncode = 0
+    @pytest.mark.parametrize("backend", ["bwrap", "seatbelt"])
+    async def test_sandbox_skipped_on_windows(self, backend):
+        """Configured Unix backends preserve the Windows native fallback."""
+        mock_proc = _CompletedProcess(b"ok")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
             patch.object(ExecTool, "_spawn", return_value=mock_proc) as mock_spawn,
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
-            tool = ExecTool(sandbox="bwrap")
+            tool = ExecTool(sandbox=backend)
             result = await tool.execute(command="dir")
 
         assert "ok" in result
         spawned_cmd = mock_spawn.call_args[0][0]
-        assert "bwrap" not in spawned_cmd
+        assert backend not in spawned_cmd
 
     @pytest.mark.asyncio
-    async def test_bwrap_applied_on_unix(self):
+    @pytest.mark.parametrize("backend", ["bwrap", "seatbelt"])
+    async def test_sandbox_applied_on_unix(self, backend):
         """On Unix, sandbox wrapping should still happen normally."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"sandboxed", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"sandboxed")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", False),
-            patch("nanobot.agent.tools.shell.wrap_command", return_value="bwrap -- sh -c ls") as mock_wrap,
+            patch("nanobot.agent.tools.shell.wrap_command", return_value=f"{backend} -- sh -c ls") as mock_wrap,
             patch.object(ExecTool, "_spawn", return_value=mock_proc) as mock_spawn,
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
-            tool = ExecTool(sandbox="bwrap", working_dir="/workspace")
+            tool = ExecTool(sandbox=backend, working_dir="/workspace")
             await tool.execute(command="ls")
 
         mock_wrap.assert_called_once()
         spawned_cmd = mock_spawn.call_args[0][0]
-        assert "bwrap" in spawned_cmd
+        assert backend in spawned_cmd
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("backend", ["bwrap", "seatbelt"])
+    async def test_sandbox_receives_configured_bind_roots(self, tmp_path, backend):
+        """Configured bind roots should be forwarded to the sandbox wrapper."""
+        mock_proc = _CompletedProcess(b"sandboxed")
+        tool_bin = tmp_path / "tool-bin"
+        tool_cache = tmp_path / "tool-cache"
+
+        with (
+            patch("nanobot.agent.tools.shell._IS_WINDOWS", False),
+            patch("nanobot.agent.tools.shell.wrap_command", return_value=f"{backend} -- sh -c ls") as mock_wrap,
+            patch.object(ExecTool, "_spawn", return_value=mock_proc),
+            patch.object(ExecTool, "_guard_command", return_value=None),
+        ):
+            tool = ExecTool(
+                sandbox=backend,
+                working_dir="/workspace",
+                sandbox_ro_binds=[str(tool_bin)],
+                sandbox_rw_binds=[str(tool_cache)],
+            )
+            await tool.execute(command="ls")
+
+        kwargs = mock_wrap.call_args.kwargs
+        assert kwargs["sandbox_ro_binds"] == [
+            str(tool_bin.resolve(strict=False))
+        ]
+        assert kwargs["sandbox_rw_binds"] == [
+            str(tool_cache.resolve(strict=False))
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -448,52 +609,61 @@ class TestSandboxPlatform:
 class TestExecuteEndToEnd:
 
     @pytest.mark.asyncio
-    async def test_windows_full_path(self):
+    @pytest.mark.parametrize(
+        "yield_time_ms, stdin",
+        [(None, asyncio.subprocess.DEVNULL), (1000, asyncio.subprocess.PIPE)],
+    )
+    async def test_windows_full_path(self, yield_time_ms, stdin):
         """Full execute() flow on Windows: env, spawn, output formatting."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"hello world\r\n", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"hello world\r\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
-            patch.object(ExecTool, "_spawn", return_value=mock_proc),
+            patch.object(ExecTool, "_spawn", return_value=mock_proc) as mock_spawn,
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
             tool = ExecTool()
-            result = await tool.execute(command="echo hello world")
+            result = await tool.execute(command="echo hello world", yield_time_ms=yield_time_ms)
 
         assert "hello world" in result
         assert "Exit code: 0" in result
+        assert "session_id:" not in result
+        assert mock_spawn.call_args.kwargs.get("stdin", asyncio.subprocess.DEVNULL) == stdin
+        assert mock_spawn.call_args.kwargs["process_tree"] is True
 
     @pytest.mark.asyncio
-    async def test_unix_full_path(self):
+    @pytest.mark.parametrize(
+        "yield_time_ms, stdin",
+        [(None, asyncio.subprocess.DEVNULL), (1000, asyncio.subprocess.PIPE)],
+    )
+    async def test_unix_full_path(self, yield_time_ms, stdin):
         """Full execute() flow on Unix: env, spawn, output formatting."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"hello world\n", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"hello world\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", False),
-            patch.object(ExecTool, "_spawn", return_value=mock_proc),
+            patch.object(ExecTool, "_spawn", return_value=mock_proc) as mock_spawn,
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
             tool = ExecTool()
-            result = await tool.execute(command="echo hello world")
+            result = await tool.execute(command="echo hello world", yield_time_ms=yield_time_ms)
 
         assert "hello world" in result
         assert "Exit code: 0" in result
+        assert "session_id:" not in result
+        assert mock_spawn.call_args.kwargs.get("stdin", asyncio.subprocess.DEVNULL) == stdin
+        assert mock_spawn.call_args.kwargs["process_tree"] is True
 
     @pytest.mark.asyncio
     async def test_execute_defaults_to_non_login_shell(self):
         """The public execute path must not silently request a login shell."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"ok\n", b"")
-        mock_proc.returncode = 0
         captured_login = []
 
-        async def capture_spawn(cmd, cwd, env, shell_program=None, login=None, *, stdin=None):
+        async def capture_spawn(
+            cmd, cwd, env, shell_program=None, login=None, *, stdin=None, process_tree=False,
+        ):
             captured_login.append(login)
-            return mock_proc
+            return _CompletedProcess(b"ok\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", False),
@@ -575,13 +745,12 @@ class TestWindowsMultilineExec:
 
     @pytest.mark.asyncio
     async def test_multiline_python_uses_powershell(self):
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"1\n2\n", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"1\n2\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
             patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+            patch.object(ExecTool, "_create_windows_job", side_effect=_FakeWindowsJob),
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
             mock_exec.return_value = mock_proc
@@ -596,13 +765,12 @@ class TestWindowsMultilineExec:
 
     @pytest.mark.asyncio
     async def test_multiline_node_uses_powershell(self):
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"1\n", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"1\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
             patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+            patch.object(ExecTool, "_create_windows_job", side_effect=_FakeWindowsJob),
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
             mock_exec.return_value = mock_proc
@@ -616,9 +784,7 @@ class TestWindowsMultilineExec:
     @pytest.mark.asyncio
     async def test_single_line_uses_powershell(self):
         """Single-line commands also route through PowerShell now."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"1\n", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"1\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
@@ -633,9 +799,7 @@ class TestWindowsMultilineExec:
 
     @pytest.mark.asyncio
     async def test_unix_unchanged(self):
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"1\n2\n", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"1\n2\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", False),
@@ -659,13 +823,12 @@ class TestResolveShellWindows:
     @pytest.mark.asyncio
     async def test_shell_powershell_accepted(self):
         """shell='powershell' should resolve and route through PowerShell."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b"hello\n", b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b"hello\n")
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
             patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+            patch.object(ExecTool, "_create_windows_job", side_effect=_FakeWindowsJob),
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
             mock_exec.return_value = mock_proc
@@ -680,13 +843,12 @@ class TestResolveShellWindows:
     @pytest.mark.asyncio
     async def test_shell_cmd_accepted(self):
         """shell='cmd' should preserve the command string for cmd.exe parsing."""
-        mock_proc = AsyncMock()
-        mock_proc.communicate.return_value = (b'"a & b"\n', b"")
-        mock_proc.returncode = 0
+        mock_proc = _CompletedProcess(b'"a & b"\n')
 
         with (
             patch("nanobot.agent.tools.shell._IS_WINDOWS", True),
             patch("asyncio.create_subprocess_shell", new_callable=AsyncMock) as mock_shell,
+            patch.object(ExecTool, "_create_windows_job", side_effect=_FakeWindowsJob),
             patch.object(ExecTool, "_guard_command", return_value=None),
         ):
             mock_shell.return_value = mock_proc
@@ -736,3 +898,71 @@ class TestWindowsRealExec:
         result = await ExecTool(timeout=10).execute(command="cmd /c exit 7")
 
         assert "Exit code: 7" in result
+
+    @pytest.mark.asyncio
+    async def test_windows_powershell_output_and_redirection_are_utf8(self, tmp_path):
+        result = await ExecTool(working_dir=str(tmp_path), timeout=180).execute(
+            command=(
+                "Write-Output 'file café λ 你好' > marker.txt; "
+                "Write-Output 'café λ 你好'; "
+                "[Console]::Error.WriteLine('warn λ 你好')"
+            ),
+            shell="powershell",
+        )
+
+        assert "café λ 你好" in result
+        assert "warn λ 你好" in result
+        assert "\x00" not in result
+        assert "Exit code: 0" in result
+
+        data = (tmp_path / "marker.txt").read_bytes()
+        assert b"\x00" not in data
+        assert data.decode("utf-8-sig").strip() == "file café λ 你好"
+
+    @pytest.mark.asyncio
+    async def test_windows_powershell_native_pipeline_input_is_utf8(self):
+        python = sys.executable.replace("'", "''")
+        result = await ExecTool(timeout=180).execute(
+            command=(
+                f"[string][char]0x4F1A | & '{python}' "
+                '-c "import sys; print(sys.stdin.buffer.read().hex())"'
+            ),
+            shell="powershell",
+        )
+
+        assert "e4bc9a0d0a" in result
+        assert "Exit code: 0" in result
+
+    @pytest.mark.asyncio
+    async def test_windows_powershell_session_output_is_utf8(self):
+        manager = ExecSessionManager()
+        try:
+            result = await ExecTool(timeout=180, session_manager=manager).execute(
+                command="Start-Sleep -Milliseconds 1500; Write-Output 'café λ 你好'",
+                shell="powershell",
+                yield_time_ms=1000,
+            )
+
+            if "session_id:" in result:
+                session_id = result.split("session_id:", 1)[1].splitlines()[0].strip()
+                poll_result = await ExecSessionTool(manager=manager).execute(
+                    session_id=session_id,
+                    input="",
+                    wait_for="café λ 你好",
+                    timeout_ms=120_000,
+                )
+                result += "\n" + poll_result
+                if "Process running." in poll_result:
+                    final_result = await ExecSessionTool(manager=manager).execute(
+                        session_id=session_id,
+                        input="",
+                        timeout_ms=30_000,
+                    )
+                    result += "\n" + final_result
+                    assert "Process running." not in final_result
+
+            assert "café λ 你好" in result
+            assert "Exit code: 0" in result
+            assert "\x00" not in result
+        finally:
+            await manager.close_all()

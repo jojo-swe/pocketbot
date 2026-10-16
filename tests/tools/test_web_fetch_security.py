@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
+from urllib.request import getproxies_environment
 
 import httpx
 import pytest
 
 from nanobot.agent.tools import web as web_module
+from nanobot.agent.tools.registry import is_tool_error_result
 from nanobot.agent.tools.web import WebFetchTool, _get_with_safe_redirects
 from nanobot.config.schema import WebFetchConfig
 from nanobot.security.network import PinnedDNSAsyncTransport
@@ -28,6 +30,9 @@ _PROXY_ENV_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "http
 def _clear_proxy_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in (*_PROXY_ENV_VARS, "NO_PROXY", "no_proxy"):
         monkeypatch.delenv(name, raising=False)
+    # getproxies() falls back to OS-level proxy settings (e.g. the Windows
+    # registry) when no environment variables are set; keep tests hermetic.
+    monkeypatch.setattr("nanobot.security.network.getproxies", getproxies_environment)
 
 
 def _fake_resolve_private(hostname, port, family=0, type_=0):
@@ -78,6 +83,11 @@ def _patch_web_fetch_fake_client(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
             return FakeJinaResponse()
 
     monkeypatch.setattr(web_module.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: object())
+    monkeypatch.setattr(
+        "nanobot.security.network.httpx.AsyncHTTPTransport",
+        lambda **_kwargs: object(),
+    )
     return client_kwargs
 
 
@@ -87,6 +97,7 @@ async def test_web_fetch_blocks_private_ip():
     with patch("nanobot.security.network.socket.getaddrinfo", _fake_resolve_private):
         result = await tool.execute(url="http://169.254.169.254/computeMetadata/v1/")
     data = json.loads(result)
+    assert is_tool_error_result(result)
     assert "error" in data
     assert "private" in data["error"].lower() or "blocked" in data["error"].lower()
 
@@ -99,6 +110,7 @@ async def test_web_fetch_blocks_localhost():
     with patch("nanobot.security.network.socket.getaddrinfo", _resolve_localhost):
         result = await tool.execute(url="http://localhost/admin")
     data = json.loads(result)
+    assert is_tool_error_result(result)
     assert "error" in data
 
 
@@ -117,34 +129,21 @@ async def test_web_fetch_blocks_localhost_even_in_full_workspace_scope(tmp_path)
     finally:
         reset_workspace_scope(token)
     data = json.loads(result)
+    assert is_tool_error_result(result)
     assert "error" in data
 
 
 @pytest.mark.asyncio
-async def test_web_fetch_result_contains_untrusted_flag():
+async def test_web_fetch_result_contains_untrusted_flag(monkeypatch: pytest.MonkeyPatch):
     """When fetch succeeds, result JSON must include untrusted=True and the banner."""
     tool = WebFetchTool()
+    _patch_web_fetch_fake_client(monkeypatch)
 
-    fake_html = "<html><head><title>Test</title></head><body><p>Hello world</p></body></html>"
-
-
-    class FakeResponse:
-        status_code = 200
-        url = "https://example.com/page"
-        text = fake_html
-        headers = {"content-type": "text/html"}
-        is_redirect = False
-        def raise_for_status(self): pass
-        def json(self): return {}
-
-    async def _fake_get(self, url, **kwargs):
-        return FakeResponse()
-
-    with patch("nanobot.security.network.socket.getaddrinfo", _fake_resolve_public), \
-         patch("httpx.AsyncClient.get", _fake_get):
+    with patch("nanobot.security.network.socket.getaddrinfo", _fake_resolve_public):
         result = await tool.execute(url="https://example.com/page")
 
     data = json.loads(result)
+    assert not is_tool_error_result(result)
     assert data.get("untrusted") is True
     assert "[External content" in data.get("text", "")
 
@@ -237,6 +236,11 @@ async def test_web_fetch_env_proxy_adds_proxy_mounts_and_keeps_pinned_transport(
 def test_web_fetch_no_proxy_env_keeps_pinned_direct_route(monkeypatch):
     monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example:8080")
     monkeypatch.setenv("NO_PROXY", "example.com")
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: object())
+    monkeypatch.setattr(
+        "nanobot.security.network.httpx.AsyncHTTPTransport",
+        lambda **_kwargs: object(),
+    )
 
     kwargs = web_module._fetch_client_kwargs(None, 15.0)
 
@@ -265,10 +269,21 @@ async def test_web_fetch_does_not_fallback_after_pinned_dns_rebind_rejection(mon
     monkeypatch.setattr(tool, "_fetch_jina", _unexpected_jina)
     monkeypatch.setattr(tool, "_fetch_readability", _unexpected_readability)
 
+    class FailTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            raise AssertionError("rebound target must be rejected before transport")
+
+    monkeypatch.setattr(
+        web_module,
+        "_pinned_dns_transport",
+        lambda: PinnedDNSAsyncTransport(inner=FailTransport()),
+    )
+
     with patch("nanobot.security.network.socket.getaddrinfo", _rebinding_resolver):
         result = await tool.execute(url="http://evil.example/page")
 
     data = json.loads(result)
+    assert is_tool_error_result(result)
     assert "error" in data
     assert "blocked" in data["error"].lower()
     assert calls["evil.example"] == 3
@@ -330,6 +345,7 @@ async def test_web_fetch_can_skip_jina_and_use_custom_user_agent(monkeypatch):
     monkeypatch.setattr(tool, "_fetch_jina", _fail_jina)
     monkeypatch.setattr(tool, "_extract_readable_html", lambda html, mode: "Hello world")
     monkeypatch.setattr("nanobot.agent.tools.web.httpx.AsyncClient", FakeClient)
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: object())
 
     with patch("nanobot.security.network.socket.getaddrinfo", _fake_resolve_public):
         result = await tool.execute(url="https://example.com/page")
@@ -373,6 +389,7 @@ async def test_web_fetch_falls_back_when_readability_dependency_is_missing(monke
 
     monkeypatch.setattr(tool, "_extract_readable_html", _missing_readability)
     monkeypatch.setattr("nanobot.agent.tools.web.httpx.AsyncClient", FakeClient)
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: object())
 
     with patch("nanobot.security.network.socket.getaddrinfo", _fake_resolve_public):
         result = await tool._fetch_readability("https://example.com/page", "markdown", 5000)
@@ -430,6 +447,7 @@ async def test_web_fetch_blocks_private_redirect_before_readability_request(monk
             return FakeRedirectResponse()
 
     monkeypatch.setattr(web_module.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: object())
 
     def resolve_public_start_only(hostname, port, family=0, type_=0):
         if hostname == "attacker.example":
@@ -440,6 +458,7 @@ async def test_web_fetch_blocks_private_redirect_before_readability_request(monk
         result = await tool.execute(url="https://attacker.example/start")
 
     data = json.loads(result)
+    assert is_tool_error_result(result)
     assert "error" in data
     assert "redirect blocked" in data["error"].lower()
     assert requested == ["https://attacker.example/start"]
@@ -475,6 +494,7 @@ async def test_web_fetch_blocks_private_redirect_before_returning_image(monkeypa
             super().__init__(*args, transport=transport, **kwargs)
 
     monkeypatch.setattr("nanobot.agent.tools.web.httpx.AsyncClient", TransportAsyncClient)
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: object())
 
     def resolve_public_start_only(hostname, port, family=0, type_=0):
         if hostname == "example.com":
@@ -485,6 +505,7 @@ async def test_web_fetch_blocks_private_redirect_before_returning_image(monkeypa
         result = await tool.execute(url="https://example.com/image.png")
 
     data = json.loads(result)
+    assert is_tool_error_result(result)
     assert "error" in data
     assert "redirect blocked" in data["error"].lower()
 
@@ -515,6 +536,7 @@ async def test_web_fetch_does_not_request_private_redirect_target(monkeypatch):
             super().__init__(*args, **kwargs)
 
     monkeypatch.setattr(web_module.httpx, "AsyncClient", TransportAsyncClient)
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: object())
 
     def resolve_public_start_only(hostname, port, family=0, type_=0):
         if hostname == "attacker.example":
@@ -525,6 +547,55 @@ async def test_web_fetch_does_not_request_private_redirect_target(monkeypatch):
         result = await tool.execute(url="https://attacker.example/start")
 
     data = json.loads(result)
+    assert is_tool_error_result(result)
     assert "error" in data
     assert "redirect blocked" in data["error"].lower()
     assert requested == ["https://attacker.example/start"]
+
+
+@pytest.mark.parametrize(
+    ("failure", "error_text"),
+    [("http", "404"), ("timeout", "request timed out"), ("proxy", "Proxy error: proxy unavailable")],
+)
+async def test_web_fetch_marks_terminal_fetch_failures_as_errors(monkeypatch, failure, error_text):
+    url = "https://93.184.216.34/page"
+    tool = WebFetchTool(config=WebFetchConfig(use_jina_reader=False))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if failure == "timeout":
+            raise httpx.ReadTimeout("request timed out", request=request)
+        if failure == "proxy":
+            raise httpx.ProxyError("proxy unavailable", request=request)
+        return httpx.Response(404, request=request)
+
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: httpx.MockTransport(handler))
+
+    result = await tool.execute(url=url)
+
+    assert is_tool_error_result(result)
+    data = json.loads(result)
+    assert data["url"] == url
+    assert error_text in data["error"]
+
+
+async def test_web_fetch_jina_fallback_keeps_json_error_content_successful(monkeypatch):
+    url = "https://93.184.216.34/page"
+    tool = WebFetchTool()
+    jina = AsyncMock(return_value=None)
+    source = {"error": "This is fetched document content, not a tool failure."}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=source, request=request)
+
+    monkeypatch.setattr(web_module, "_pinned_dns_transport", lambda: httpx.MockTransport(handler))
+    monkeypatch.setattr(tool, "_fetch_jina", jina)
+
+    result = await tool.execute(url=url)
+
+    jina.assert_awaited_once()
+    assert not is_tool_error_result(result)
+    data = json.loads(result)
+    assert data["status"] == 200
+    assert data["extractor"] == "json"
+    assert data["untrusted"] is True
+    assert json.dumps(source, indent=2) in data["text"]
