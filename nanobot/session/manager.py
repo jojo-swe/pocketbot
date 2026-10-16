@@ -422,7 +422,7 @@ class SessionManager:
         workspace: Path,
         *,
         sessions_root: Path | None = None,
-    ):
+    ) -> None:
         from nanobot.session.sqlite_store import SqliteSessionStore
 
         self.workspace = workspace

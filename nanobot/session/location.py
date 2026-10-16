@@ -25,7 +25,7 @@ _SESSION_MIGRATION_LOCK_TIMEOUT_SECONDS = 30
 
 
 class SessionLocation:
-    def __init__(self, workspace: Path, *, sessions_root: Path | None = None):
+    def __init__(self, workspace: Path, *, sessions_root: Path | None = None) -> None:
         canonical_workspace = Path(workspace).expanduser().resolve(strict=False)
         ensure_dir(canonical_workspace)
         root = (
