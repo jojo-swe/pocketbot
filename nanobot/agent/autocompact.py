@@ -33,7 +33,7 @@ class AutoCompact:
         bind_events: SessionEventFactory | None = None,
         *,
         session_lock: Callable[[str], asyncio.Lock],
-    ):
+    ) -> None:
         self.sessions = sessions
         self.consolidator = consolidator
         self._ttl = session_ttl_minutes
