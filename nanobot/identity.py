@@ -15,7 +15,7 @@ APP_DISPLAY = "PocketBot"
 APP_EMOJI = "\U0001f916"  # 🤖
 APP_DESCRIPTION = "Pocket-sized personal AI assistant"
 UPSTREAM_REPO = "HKUDS/nanobot"
-FORK_REPO = "jojo-swe/nanobot"
+FORK_REPO = "jojo-swe/pocketbot"
 
 # --- Data directory ---
 # All user data lives under this directory.
@@ -24,7 +24,7 @@ FORK_REPO = "jojo-swe/nanobot"
 # we use ~/.nanobot (migration path).
 
 
-def _resolve_data_dir() -> Path:
+def resolve_data_dir() -> Path:
     """Resolve the data directory, with backward compatibility."""
     env = os.environ.get("POCKETBOT_HOME")
     if env:
@@ -40,7 +40,7 @@ def _resolve_data_dir() -> Path:
     return old_path
 
 
-DATA_DIR = _resolve_data_dir()
+DATA_DIR = resolve_data_dir()
 CONFIG_PATH = DATA_DIR / "config.json"
 WORKSPACE_DEFAULT = DATA_DIR / "workspace"
 SESSIONS_DIR = DATA_DIR / "sessions"

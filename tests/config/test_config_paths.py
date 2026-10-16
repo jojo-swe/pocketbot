@@ -32,16 +32,23 @@ def test_media_dir_supports_channel_namespace(monkeypatch, tmp_path: Path) -> No
 
 
 def test_shared_and_legacy_paths_remain_global() -> None:
-    assert get_cli_history_path() == Path.home() / ".nanobot" / "history" / "cli_history"
-    assert get_legacy_sessions_dir() == Path.home() / ".nanobot" / "sessions"
+    from nanobot.identity import resolve_data_dir
+
+    home = resolve_data_dir()
+    assert get_cli_history_path() == home / "history" / "cli_history"
+    assert get_legacy_sessions_dir() == home / "sessions"
 
 
 def test_workspace_path_is_explicitly_resolved() -> None:
-    assert get_workspace_path() == Path.home() / ".nanobot" / "workspace"
+    from nanobot.identity import resolve_data_dir
+
+    assert get_workspace_path() == resolve_data_dir() / "workspace"
     assert get_workspace_path("~/custom-workspace") == Path.home() / "custom-workspace"
 
 
 def test_is_default_workspace_distinguishes_default_and_custom_paths() -> None:
+    from nanobot.identity import resolve_data_dir
+
     assert is_default_workspace(None) is True
-    assert is_default_workspace(Path.home() / ".nanobot" / "workspace") is True
+    assert is_default_workspace(resolve_data_dir() / "workspace") is True
     assert is_default_workspace("~/custom-workspace") is False

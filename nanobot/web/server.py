@@ -8,18 +8,26 @@ import secrets
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Depends, UploadFile, File
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 from nanobot.bus.events import InboundMessage
 from nanobot.bus.queue import MessageBus
-
 
 STATIC_DIR = Path(__file__).parent / "static"
 _BOOT_TIME = time.monotonic()
@@ -95,7 +103,7 @@ def create_app(
     # Track active WebSocket connections: ws_id -> WebSocket
     connections: dict[str, WebSocket] = {}
     # Map ws_id -> pending response futures
-    pending: dict[str, asyncio.Future] = {}
+    pending: dict[str, asyncio.Future[str]] = {}
 
     # -------------------------------------------------------------------
     # Auth dependency
@@ -106,8 +114,9 @@ def create_app(
         if not config or not config.web.auth.enabled:
             # Auth disabled — warn if non-local
             if not _is_local_request(request):
+                client_host = request.client.host if request.client else "unknown"
                 logger.warning(
-                    f"Unauthenticated non-local request from {request.client.host}. "
+                    f"Unauthenticated non-local request from {client_host}. "
                     "Consider enabling web.auth in config."
                 )
             return
@@ -176,9 +185,12 @@ def create_app(
         if not config:
             raise HTTPException(status_code=503, detail="Config not available")
 
-        body = await request.json()
-        updated = {}
-        errors = {}
+        body_raw = await request.json()
+        if not isinstance(body_raw, dict):
+            raise HTTPException(status_code=400, detail="JSON object required")
+        body = cast(dict[str, Any], body_raw)
+        updated: dict[str, Any] = {}
+        errors: dict[str, str] = {}
 
         for key, value in body.items():
             if key not in _SAFE_SETTINGS:
@@ -270,14 +282,14 @@ def create_app(
     # File upload / media serving
     # -------------------------------------------------------------------
 
-    _ALLOWED_MIME_PREFIXES = ("image/", "text/plain", "application/pdf")
-    _MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
+    allowed_mime_prefixes = ("image/", "text/plain", "application/pdf")
+    max_upload_bytes = 20 * 1024 * 1024  # 20 MB
 
     @app.post("/api/upload", dependencies=[auth_dep])
     async def api_upload(file: UploadFile = File(...)):
         """Upload a file (image or document) and return its URL."""
         content_type = file.content_type or ""
-        if not any(content_type.startswith(p) for p in _ALLOWED_MIME_PREFIXES):
+        if not any(content_type.startswith(p) for p in allowed_mime_prefixes):
             raise HTTPException(
                 status_code=415,
                 detail=f"Unsupported media type: {content_type}",
@@ -294,8 +306,8 @@ def create_app(
         unique_name = f"{stem}_{uuid.uuid4().hex[:8]}{suffix}"
         dest = media_dir / unique_name
 
-        data = await file.read(_MAX_UPLOAD_BYTES + 1)
-        if len(data) > _MAX_UPLOAD_BYTES:
+        data = await file.read(max_upload_bytes + 1)
+        if len(data) > max_upload_bytes:
             raise HTTPException(
                 status_code=413,
                 detail="File too large (max 20 MB)",
@@ -403,7 +415,7 @@ def create_app(
         session_key = f"web:{ws_id}"
         logger.info(f"WebSocket connected: {ws_id}")
 
-        _WS_IDLE_TIMEOUT = 1800  # 30 minutes
+        ws_idle_timeout = 1800  # 30 minutes
 
         try:
             # Send welcome
@@ -416,7 +428,7 @@ def create_app(
                 try:
                     raw = await asyncio.wait_for(
                         ws.receive_text(),
-                        timeout=_WS_IDLE_TIMEOUT,
+                        timeout=ws_idle_timeout,
                     )
                 except asyncio.TimeoutError:
                     logger.info(
@@ -500,10 +512,10 @@ async def _process_via_bus(
     content: str,
     session_key: str,
     ws_id: str,
-    pending: dict[str, asyncio.Future],
+    pending: dict[str, asyncio.Future[str]],
 ) -> str:
     """Fallback: route through the message bus when no direct agent access."""
-    future: asyncio.Future = asyncio.get_event_loop().create_future()
+    future: asyncio.Future[str] = asyncio.get_running_loop().create_future()
     pending[ws_id] = future
 
     await bus.publish_inbound(InboundMessage(

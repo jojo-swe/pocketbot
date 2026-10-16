@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
+from nanobot.agent import skills as agent_skills
+from nanobot.agent.context import ContextBuilder
 from nanobot.agent.skills import SkillsLoader
+from nanobot.agent.tools.filesystem import ListDirTool, WriteFileTool
+from nanobot.agent.tools.search import GrepTool
 
 
 def _write_skill(
@@ -266,6 +270,7 @@ def test_disabled_skills_excluded_from_list(tmp_path: Path) -> None:
     assert len(entries) == 1
     assert entries[0]["name"] == "beta"
     assert entries[0]["path"] == str(beta_path)
+    assert loader.load_skill("alpha") is None
 
 
 def test_disabled_skills_empty_set_no_effect(tmp_path: Path) -> None:
@@ -297,6 +302,96 @@ def test_disabled_skills_excluded_from_build_skills_summary(tmp_path: Path) -> N
     assert "beta" in summary
 
 
+def test_build_skills_summary_keeps_builtin_root_absolute_in_agent_workspace(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace_skills = workspace / "skills"
+    workspace_skills.mkdir(parents=True)
+    workspace_path = _write_skill(workspace_skills, "alpha", body="# Alpha")
+    builtin = tmp_path / "builtin"
+    builtin_path = _write_skill(builtin, "beta", body="# Beta")
+
+    summary = SkillsLoader(workspace, builtin_skills_dir=builtin).build_skills_summary()
+
+    assert str(workspace_skills) not in summary
+    assert f"### Built-in skills (`{builtin.resolve()}`)" in summary
+    assert str(workspace_path) not in summary
+    assert str(builtin_path) not in summary
+    assert summary.count("(`skills`)") == 1
+    assert "`alpha/SKILL.md`" in summary
+    assert "`beta/SKILL.md`" in summary
+
+
+async def test_builtin_summary_root_supports_restricted_reference_search(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    builtin = tmp_path / "builtin"
+    _write_skill(builtin, "documentation", body="# Documentation")
+    references = builtin / "documentation" / "references"
+    references.mkdir()
+    guide = references / "usage.md"
+    guide.write_text("Choose a timezone", encoding="utf-8")
+    summary = SkillsLoader(workspace, builtin_skills_dir=builtin).build_skills_summary()
+    heading = next(line for line in summary.splitlines() if line.startswith("### Built-in skills"))
+    reference_path = str(Path(heading.split("`")[1]) / "documentation" / "references")
+    options = {
+        "workspace": workspace,
+        "allowed_dir": workspace,
+        "restrict_to_workspace": True,
+        "extra_read_allowed_dirs": [builtin],
+    }
+
+    listing = await ListDirTool(**options).execute(path=reference_path)
+    matches = await GrepTool(**options).execute(
+        pattern="timezone", path=reference_path, glob="*.md", output_mode="files_with_matches",
+    )
+
+    assert "usage.md" in listing
+    assert "usage.md" in matches
+    rejected = await WriteFileTool(**options).execute(path=str(guide), content="replace")
+    assert rejected.is_error
+    assert guide.read_text(encoding="utf-8") == "Choose a timezone"
+
+
+def test_build_skills_summary_keeps_absolute_roots_for_selected_project(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace_skills = workspace / "skills"
+    workspace_skills.mkdir(parents=True)
+    _write_skill(workspace_skills, "alpha", body="# Alpha")
+    builtin = tmp_path / "builtin"
+    _write_skill(builtin, "beta", body="# Beta")
+    project = tmp_path / "project"
+    project.mkdir()
+
+    summary = SkillsLoader(workspace, builtin_skills_dir=builtin).build_skills_summary(
+        workspace=project,
+    )
+
+    assert summary.count(str(workspace_skills.resolve())) == 1
+    assert summary.count(str(builtin.resolve())) == 1
+    assert str(project.resolve()) not in summary
+
+
+def test_bundled_update_setup_description_is_valid_yaml(tmp_path: Path) -> None:
+    metadata = SkillsLoader(tmp_path).get_skill_metadata("update-setup")
+
+    assert metadata is not None
+    description = metadata["description"]
+    assert isinstance(description, str)
+    assert description.strip()
+
+
+def test_bundled_skills_use_agent_owned_paths(tmp_path: Path) -> None:
+    loader = SkillsLoader(tmp_path)
+    memory = loader.load_skill("memory")
+    update_setup = loader.load_skill("update-setup")
+
+    assert memory is not None
+    assert "`History log` path from the system prompt" in memory
+    assert update_setup is not None
+    assert "<agent-workspace>/skills/update/SKILL.md" in update_setup
+    assert "Never substitute a project-relative" in update_setup
+
+
 def test_disabled_skills_excluded_from_get_always_skills(tmp_path: Path) -> None:
     workspace = tmp_path / "ws"
     ws_skills = workspace / "skills"
@@ -310,6 +405,154 @@ def test_disabled_skills_excluded_from_get_always_skills(tmp_path: Path) -> None
     always = loader.get_always_skills()
     assert "alpha" not in always
     assert "beta" in always
+
+
+def test_explicit_skill_references_resolve_available_enabled_names_in_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "ws"
+    skills_root = workspace / "skills"
+    skills_root.mkdir(parents=True)
+    _write_skill(skills_root, "alpha", body="# Alpha")
+    _write_skill(skills_root, "beta", body="# Beta")
+    _write_skill(
+        skills_root,
+        "blocked",
+        metadata_json={"requires": {"env": ["MISSING_SKILL_TEST_ENV"]}},
+        body="# Blocked",
+    )
+    builtin = tmp_path / "builtin"
+    builtin.mkdir()
+    monkeypatch.delenv("MISSING_SKILL_TEST_ENV", raising=False)
+    loader = SkillsLoader(
+        workspace,
+        builtin_skills_dir=builtin,
+        disabled_skills={"beta"},
+    )
+
+    invoked = loader.get_explicitly_invoked_skills(
+        "Use $alpha, then $unknown, $alpha again, $beta, and $blocked."
+    )
+
+    assert invoked == ["alpha"]
+
+
+def test_multiple_explicit_skills_share_one_ordered_runtime_context(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    skills_root = workspace / "skills"
+    skills_root.mkdir(parents=True)
+    _write_skill(skills_root, "alpha", body="Alpha instructions")
+    _write_skill(skills_root, "beta", body="Beta instructions")
+    _write_skill(
+        skills_root,
+        "always",
+        metadata_json={"always": True},
+        body="Always instructions",
+    )
+    builtin = tmp_path / "builtin"
+    builtin.mkdir()
+    loader = SkillsLoader(workspace, builtin_skills_dir=builtin)
+
+    context = loader.build_explicit_skill_runtime_context(
+        "Use $beta, then $alpha, $beta again, and $always."
+    )
+
+    assert context is not None
+    assert context.source == "explicit_skills"
+    assert context.content.count("### Skill: beta") == 1
+    assert context.content.count("### Skill: alpha") == 1
+    assert context.content.index("### Skill: beta") < context.content.index(
+        "### Skill: alpha"
+    )
+    assert "### Skill: always" not in context.content
+
+
+def test_plain_message_skips_explicit_skill_discovery(tmp_path: Path, monkeypatch) -> None:
+    loader = SkillsLoader(tmp_path)
+
+    def unexpected_discovery():
+        pytest.fail("ordinary chat must not scan skills for explicit references")
+
+    monkeypatch.setattr(loader, "_discover_skills", unexpected_discovery)
+    assert loader.build_explicit_skill_runtime_context("Explain this project") is None
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_prompt_reads_skills_once_and_refreshes_on_next_build(
+    tmp_path: Path, monkeypatch, explicit: bool,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    builtin = tmp_path / "builtin"
+    builtin.mkdir()
+    skills = workspace / "skills"
+    alpha = _write_skill(skills, "alpha", metadata_json={"always": True}, body="First instructions")
+    beta = _write_skill(skills, "beta", metadata_json={"requires": {"bins": ["prompt-test-cli"]}})
+    builder = ContextBuilder(workspace)
+    builder.skills = SkillsLoader(workspace, builtin_skills_dir=builtin)
+    documents = {alpha, beta}
+    reads: list[Path] = []
+    parses: list[str] = []
+    original_read = Path.read_text
+    original_parse = agent_skills.parse_skill_metadata
+    original_discover = builder.skills._discover_skills
+    discoveries = 0
+    command_available = False
+    checks: list[str] = []
+
+    def discover():
+        nonlocal discoveries
+        discoveries += 1
+        return original_discover()
+
+    def read(path, *args, **kwargs):
+        if path in documents:
+            reads.append(path)
+        return original_read(path, *args, **kwargs)
+
+    def parse(content):
+        parses.append(content)
+        return original_parse(content)
+
+    def which(command):
+        checks.append(command)
+        return "installed-command" if command_available else None
+
+    def build_prompt():
+        if explicit:
+            messages = builder.build_messages(history=[], current_message="Use $alpha and $beta")
+            return "\n".join(message["content"] for message in messages)
+        return builder.build_system_prompt()
+
+    monkeypatch.setattr(builder.skills, "_discover_skills", discover)
+    monkeypatch.setattr(Path, "read_text", read)
+    monkeypatch.setattr(agent_skills, "parse_skill_metadata", parse)
+    monkeypatch.setattr("nanobot.agent.skills.shutil.which", which)
+    first = build_prompt()
+    assert "First instructions" in first
+    assert "**beta**" not in first
+    assert discoveries == 1
+    assert all(reads.count(path) == 1 for path in documents)
+    assert len(parses) == len(documents)
+    assert checks == ["prompt-test-cli"]
+
+    alpha.write_text(original_read(alpha).replace("First instructions", "Updated instructions"), encoding="utf-8")
+    beta.write_text(original_read(beta).replace("---\n", "---\ndescription: Updated description\n", 1), encoding="utf-8")
+    command_available = True
+    documents.add(_write_skill(skills, "gamma", body="New skill"))
+    reads.clear()
+    parses.clear()
+    checks.clear()
+    second = build_prompt()
+    assert "Updated instructions" in second and "First instructions" not in second
+    assert "Updated description" in second
+    assert "**beta**" in second
+    assert "**gamma**" in second
+    assert discoveries == 2
+    assert all(reads.count(path) == 1 for path in documents)
+    assert len(parses) == len(documents)
+    assert checks == ["prompt-test-cli"]
 
 
 # -- multiline description tests (YAML folded > and literal |) -----------------
@@ -397,3 +640,45 @@ def test_get_skill_metadata_handles_yaml_types(tmp_path: Path) -> None:
     assert meta.get("always") is True
     # metadata is a parsed dict, not a JSON string
     assert isinstance(meta.get("metadata"), dict)
+
+
+def test_check_requirements_tolerates_null_requires_and_lists(tmp_path: Path) -> None:
+    """Null requires/bins/env must not crash skill listing (JSON/YAML nulls)."""
+    workspace = tmp_path / "ws"
+    ws_skills = workspace / "skills"
+    ws_skills.mkdir(parents=True)
+    _write_skill(
+        ws_skills,
+        "null-requires",
+        metadata_json={"always": True, "requires": None},
+        body="# Null requires",
+    )
+    _write_skill(
+        ws_skills,
+        "null-bins",
+        metadata_json={"always": True, "requires": {"bins": None, "env": None}},
+        body="# Null bins",
+    )
+    _write_skill(
+        ws_skills,
+        "null-elems",
+        metadata_json={"always": True, "requires": {"bins": [None, ""], "env": [None]}},
+        body="# Null elems",
+    )
+    builtin = tmp_path / "builtin"
+    builtin.mkdir()
+    loader = SkillsLoader(workspace, builtin_skills_dir=builtin)
+
+    assert loader._check_requirements(loader._get_skill_meta("null-requires")) is True
+    assert loader._check_requirements(loader._get_skill_meta("null-bins")) is True
+    assert loader._check_requirements(loader._get_skill_meta("null-elems")) is True
+    always = loader.get_always_skills()
+    assert set(always) >= {"null-requires", "null-bins", "null-elems"}
+    listed = {e["name"] for e in loader.list_skills(filter_unavailable=True)}
+    assert {"null-requires", "null-bins", "null-elems"} <= listed
+    assert loader.get_skill_requirements("null-requires") == {
+        "bins": [],
+        "env": [],
+        "missing_bins": [],
+        "missing_env": [],
+    }

@@ -2,6 +2,16 @@
 
 All notable changes to pocketbot (fork of nanobot) will be documented in this file.
 
+## [2026-10-16] - Sync upstream nanobot 0.3.5
+
+### Upstream
+- Merged HKUDS/nanobot `main` at `55910717` (v0.3.5) into the pocketbot fork.
+
+### Fork
+- Kept package name `pocketbot-ai`, version `0.3.5+jojo`, and the `pocketbot` command (upstream `nanobot` remains an alias).
+- Default data directory stays `~/.pocketbot` via `nanobot.identity`, including `POCKETBOT_HOME` and legacy `~/.nanobot` fallback.
+- Restored the pocketbot web server config (`web.host` / `web.auth`) and `pocketbot web` alongside upstream WebUI.
+
 ## [2026-02-17] - Web UI Feature Completion & Identity Centralization
 
 ### 🌐 Web UI Enhancements
