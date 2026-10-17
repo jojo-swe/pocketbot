@@ -91,7 +91,7 @@ class TestSaveConfig:
         path = tmp_path / "config.json"
         cfg = Config()
         save_config(cfg, path)
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         assert isinstance(data, dict)
 
     def test_save_uses_camelcase_keys(self, tmp_path):
@@ -99,7 +99,7 @@ class TestSaveConfig:
         cfg = Config()
         cfg.agents.defaults.max_tokens = 9999
         save_config(cfg, path)
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         # Should be camelCase in the file
         assert data["agents"]["defaults"]["maxTokens"] == 9999
 
@@ -130,7 +130,7 @@ class TestSaveConfig:
         cfg.web.auth.token = "my-secret"
         save_config(cfg, path)
 
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         assert data["web"]["auth"]["token"] == "my-secret"
         assert data["web"]["auth"]["enabled"] is True
 

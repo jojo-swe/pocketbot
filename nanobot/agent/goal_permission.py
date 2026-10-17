@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 
@@ -17,15 +17,17 @@ _GOAL_MUTATION_ALLOWED: ContextVar[bool] = ContextVar(
 
 
 def goal_mutation_allowed() -> bool:
+    """Return whether this turn may perform explicit sustained-goal mutations."""
     return _GOAL_MUTATION_ALLOWED.get()
 
 
 def revoke_goal_mutation_permission() -> None:
+    """Revoke the turn-local goal-mutation permission immediately."""
     _GOAL_MUTATION_ALLOWED.set(False)
 
 
 @contextmanager
-def goal_mutation_permission(allowed: bool):
+def goal_mutation_permission(allowed: bool) -> Generator[None]:
     """Bind goal permission for one agent-run or direct tool execution scope."""
     token = _GOAL_MUTATION_ALLOWED.set(allowed)
     try:
