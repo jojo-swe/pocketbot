@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 
@@ -27,7 +27,7 @@ def revoke_goal_mutation_permission() -> None:
 
 
 @contextmanager
-def goal_mutation_permission(allowed: bool) -> Iterator[None]:
+def goal_mutation_permission(allowed: bool) -> Generator[None]:
     """Bind goal permission for one agent-run or direct tool execution scope."""
     token = _GOAL_MUTATION_ALLOWED.set(allowed)
     try:
